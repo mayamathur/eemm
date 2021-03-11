@@ -3,7 +3,7 @@
     "path": "~/Dropbox/Personal computer/Independent studies/2021/E-value for effect modification and interaction (EEMM)/EEMM (git)/Applied example/Code/helper.R",
     "project_path": "Applied example/Code/helper.R",
     "type": "r_source",
-    "hash": "0",
+    "hash": "2603231204",
     "contents": "",
     "dirty": false,
     "created": 1615392867179.0,
@@ -11,15 +11,15 @@
     "relative_order": 2,
     "properties": {
         "tempName": "Untitled1",
-        "cursorPosition": "31,2",
-        "scrollLine": "22"
+        "cursorPosition": "43,51",
+        "scrollLine": "12"
     },
     "folds": "",
-    "lastKnownWriteTime": 1615471657,
+    "lastKnownWriteTime": 1615473175,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1615471657700,
+    "last_content_update": 1615473175343,
     "read_only": false,
     "read_only_alternatives": []
 }

@@ -12,13 +12,13 @@
     "properties": {
         "expression": "read.csv(\"stats_for_paper.csv\")",
         "caption": "read.csv(\"stats_for_paper.csv\")",
-        "totalObservations": "8",
-        "displayedObservations": "8",
+        "totalObservations": "16",
+        "displayedObservations": "16",
         "variables": "3",
-        "cacheKey": "A9811BE4",
+        "cacheKey": "155CEC9A",
         "object": "",
         "environment": "_rs_no_env",
-        "contentUrl": "grid_resource/gridviewer.html?env=_rs_no_env&obj=&cache_key=A9811BE4&max_cols=50",
+        "contentUrl": "grid_resource/gridviewer.html?env=_rs_no_env&obj=&cache_key=155CEC9A&max_cols=50",
         "preview": "0"
     },
     "folds": "",

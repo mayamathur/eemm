@@ -2,8 +2,20 @@ name,value,section
 RRc est,3.47,NA
 RRc lo,1.26,NA
 RRc hi,9.57,NA
-RRc pval,0.02,NA
+RRc pval,0.016382,NA
 RRc est evalue,3.13,NA
 RRc lo evalue,1.49,NA
 RRc est evalue mono,6.39,NA
 RRc lo evalue mono,1.82,NA
+RDw est,0.04,NA
+RDw lo,0.02,NA
+RDw hi,0.05,NA
+RDw pval,< 0.0001,NA
+RDm est,0.01,NA
+RDm lo,-0.01,NA
+RDm hi,0.02,NA
+RDm pval,0.34013,NA
+RDc est,0.03,NA
+RDc lo,0.01,NA
+RDc hi,0.05,NA
+RDc pval,0.010365,NA

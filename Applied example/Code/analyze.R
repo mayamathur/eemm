@@ -20,6 +20,8 @@ library(msm)
 library(here)
 library(testthat)
 
+options(scipen=999)
+
 results.dir = here("Applied example/Results from R")
 
 # for writing results to Overleaf papers
@@ -42,9 +44,15 @@ overleaf.dir = "~/Dropbox/Apps/Overleaf/EEMM: E-values for effect modification a
 # ~ Women ----------------------
 # cell counts are from Table 1 (totals) and Table 4 (cases)
 # women
+
+# from Table 1:
+# n with L=1 and with L=0 for women
+nw_1 = 2988
+nw_0 = 364
+
 dw = data.frame(  Y = c(1, 1, 0, 0),
                   L = c(1, 0, 1, 0),
-                 n = c( 158, 6, 2988-158, 364-6 ) )
+                 n = c( 158, 6, nw_1-158, nw_0-6 ) )
 
 # P(Y = 1 | L=1) and P(Y = 1 | L=0) for women
 ( pw_1 = dw$n[ dw$L == 1 & dw$Y == 1 ] / sum(dw$n[ dw$L == 1 ]) )
@@ -60,9 +68,15 @@ dw = data.frame(  Y = c(1, 1, 0, 0),
 # ~ Men ----------------------
 # cell counts are from Table 1 (totals) and Table 4 (cases)
 # men
+
+# from Table 1:
+# n with L=1 and with L=0 for women
+nm_1 = 1790
+nm_0 = 605
+
 dm = data.frame(  Y = c(1, 1, 0, 0),
                   L = c(1, 0, 1, 0),
-                  n = c( 64, 17, 1790-64, 605-17 ) )
+                  n = c( 64, 17, nm_1-64, nm_0-17 ) )
 
 # P(Y = 1 | L=1) and P(Y = 1 | L=0) for mean
 ( pm_1 = dm$n[ dm$L == 1 & dm$Y == 1 ] / sum(dm$n[ dm$L == 1 ]) )
@@ -129,7 +143,6 @@ update_result_csv( name = "RRc lo evalue mono",
 
 # ~ Confounded point estimates and inference ----------------------
 
-
 # we don't have adjusted probabilities, so instead use 
 #  crude ones
 
@@ -138,40 +151,54 @@ RDw = (pw_1 - pw_0)
 RDm = (pm_1 - pm_0)
 RDc = (pw_1 - pw_0) - (pm_1 - pm_0)
 
+# sanity check
+expect_equal( RDw,
+              158/nw_1 - 6/nw_0 )
+expect_equal( RDm,
+              64/nm_1 - 17/nm_0 )
+
 
 # inference for risk differences
 VarRDw = var_RD(p1 = pw_1,
                 p0 = pw_0,
-                n1 = sum( dw$n[ dw$L == 1 ] ),
-                n0 = sum( dw$n[ dw$L == 0 ] ) )
+                n1 = nw_1,
+                n0 = nw_0 )
 
 VarRDm = var_RD(p1 = pm_1,
                 p0 = pm_0,
-                n1 = sum( dm$n[ dm$L == 1 ] ),
-                n0 = sum( dm$n[ dm$L == 0 ] ) )
-
+                n1 = nm_1,
+                n0 = nm_0 )
 
 ( VarRDc = VarRDw + VarRDm )
 
-# write results
-update_result_csv( name = "RDc est",
-                   value = round(RRc, 2) )
-update_result_csv( name = "RDc lo",
-                   value = round(RRc.lo, 2) )
-update_result_csv( name = "RDc est",
-                   value = round(RRc.hi, 2) )
 
 
 
+# write results for each stratum and for EMMs
+resRDw = write_est_inf( est = RDw, 
+                        var = VarRDw,
+                        prefix = "RDw",
+                        takeExp = FALSE )
+
+resRDm = write_est_inf( est = RDm, 
+                        var = VarRDm,
+                        prefix = "RDm",
+                        takeExp = FALSE )
+
+resRDc = write_est_inf( est = RDc, 
+                        var = VarRDc,
+                        prefix = "RDc",
+                        takeExp = FALSE )
+
+# sanity check
+expect_equal( RDw - 1.96 * sqrt(VarRDw),
+              resRDw$lo,
+              tol = 0.001 )
 
 
-# sanity check: they report p=0.02 for interaction (pg 4)
-#bm
-expect_equal( round( 2 * ( 1 - pnorm( abs( log(RRc) / sqrt(VarLogRRc) ) ) ), 2 ),
-              0.02 )
 
-( RRc.lo = RRc - qnorm(.975) * sqrt(VarLogRRc) )
-( RRc.hi = RRc + qnorm(.975) * sqrt(VarLogRRc) )
+# ~ E-values ----------------------
+
 
 # non-monotonic confounding
 # take square roots
@@ -209,41 +236,41 @@ update_result_csv( name = "RRc adj lo evalue mono",
 
 
 
-# FROM OLDER WORK ----------------------
-
-
-
-# plot it along with the normal E-value
-library(ggplot2)
-
-
-dp = data.frame( RR = seq(1,5,.001) )
-dp$evalue = dp$RR + sqrt( dp$RR * (dp$RR - 1) )
-dp$evalueInt = sqrt(dp$RR) + sqrt( sqrt(dp$RR) * ( sqrt(dp$RR) - 1) )
-
-ggplot( data = dp ) +
-  
-  geom_abline(intercept = 0,
-              slope = 1,
-              lty = 2,
-              color = "gray") +
-  
-  geom_line(size = 1,  aes( x = RR,
-                            y = evalue)) +
-  geom_line(size = 1,  aes( x = RR,
-                            y = evalueInt)) +
-  theme_classic() +
-  
-  scale_x_continuous( limits = c(1, max(dp$RR)),
-                      breaks = seq(1,max(dp$RR),.5)) +
-  
-  scale_y_continuous( limits = c(1,5),
-                      breaks = seq(1,5,.5)) +
-  
-  xlab(bquote(RR[XY]^c)) + 
-  ylab("E-value")
-
-
+# # FROM OLDER WORK ----------------------
+# 
+# 
+# 
+# # plot it along with the normal E-value
+# library(ggplot2)
+# 
+# 
+# dp = data.frame( RR = seq(1,5,.001) )
+# dp$evalue = dp$RR + sqrt( dp$RR * (dp$RR - 1) )
+# dp$evalueInt = sqrt(dp$RR) + sqrt( sqrt(dp$RR) * ( sqrt(dp$RR) - 1) )
+# 
+# ggplot( data = dp ) +
+#   
+#   geom_abline(intercept = 0,
+#               slope = 1,
+#               lty = 2,
+#               color = "gray") +
+#   
+#   geom_line(size = 1,  aes( x = RR,
+#                             y = evalue)) +
+#   geom_line(size = 1,  aes( x = RR,
+#                             y = evalueInt)) +
+#   theme_classic() +
+#   
+#   scale_x_continuous( limits = c(1, max(dp$RR)),
+#                       breaks = seq(1,max(dp$RR),.5)) +
+#   
+#   scale_y_continuous( limits = c(1,5),
+#                       breaks = seq(1,5,.5)) +
+#   
+#   xlab(bquote(RR[XY]^c)) + 
+#   ylab("E-value")
+# 
+# 
 
 
 

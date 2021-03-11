@@ -41,7 +41,7 @@ write_est_inf = function( est, var, prefix, takeExp ) {
                      value = round( transf(CIs[2]), 2) )
   
   update_result_csv( name = paste( prefix, "pval" ),
-                     value = round( pval, 2) )
+                     value = format.pval( pval, eps=0.0001) )
   
   # also return results as (unrounded) df
   res = data.frame( est = transf(est),
