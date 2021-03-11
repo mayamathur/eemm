@@ -1,0 +1,32 @@
+{
+    "id": "81A7A3CE",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1615394658665.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "expression": "read.csv(\"stats_for_paper.csv\")",
+        "caption": "read.csv(\"stats_for_paper.csv\")",
+        "totalObservations": "8",
+        "displayedObservations": "8",
+        "variables": "3",
+        "cacheKey": "A9811BE4",
+        "object": "",
+        "environment": "_rs_no_env",
+        "contentUrl": "grid_resource/gridviewer.html?env=_rs_no_env&obj=&cache_key=A9811BE4&max_cols=50",
+        "preview": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 72904239485466976,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1615394658665,
+    "read_only": false,
+    "read_only_alternatives": []
+}

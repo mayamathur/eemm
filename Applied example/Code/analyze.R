@@ -1,0 +1,256 @@
+
+# PRELIMINARIES -------------------------------------------------------
+
+
+# The general workflow when working with renv is:
+#   
+#   Call renv::init() to initialize a new project-local environment with a private R library,
+# 
+# Work in the project as normal, installing and removing new R packages as they are needed in the project,
+# 
+# Call renv::snapshot() to save the state of the project library to the lockfile (called renv.lock),
+# 
+# Continue working on your project, installing and updating R packages as needed.
+# 
+# Call renv::snapshot() again to save the state of your project library if your attempts to update R packages were successful, or call renv::restore() to revert to the previous state as encoded in the lockfile if your attempts to update packages introduced some new problems.
+library(renv)
+library(EValue)
+library(MetaUtility)
+library(msm)
+library(here)
+library(testthat)
+
+results.dir = here("Applied example/Results from R")
+
+# for writing results to Overleaf papers
+overleaf.dir = "~/Dropbox/Apps/Overleaf/EEMM: E-values for effect modification and interaction/R_objects"
+
+
+# ENTER DATA (CELL COUNTS) ----------------------
+
+# only used for additive EMM
+
+# L = low education (1=low vs. 0=high, excluding medium)
+# G = sex (1=women, 0=men)
+# Y = dementia
+# C = age, age^2, study ID (because this was a pooled analysis)
+
+# for additive interaction, need:
+# f_e = P(E=e | G=g)
+# p_{eg} = E[ Y | E=e, G=g ]
+
+# ~ Women ----------------------
+# cell counts are from Table 1 (totals) and Table 4 (cases)
+# women
+dw = data.frame(  Y = c(1, 1, 0, 0),
+                  L = c(1, 0, 1, 0),
+                 n = c( 158, 6, 2988-158, 364-6 ) )
+
+# P(Y = 1 | L=1) and P(Y = 1 | L=0) for women
+( pw_1 = dw$n[ dw$L == 1 & dw$Y == 1 ] / sum(dw$n[ dw$L == 1 ]) )
+( pw_0 = dw$n[ dw$L == 0 & dw$Y == 1 ] / sum(dw$n[ dw$L == 0 ]) )
+
+# a bit different from 3.78 because mine is crude 
+( crudeRRw = pw_1/pw_0 )
+
+# HR using person-years from table: 3.01 (still different)
+(158/6920) / (6/792)
+
+
+# ~ Men ----------------------
+# cell counts are from Table 1 (totals) and Table 4 (cases)
+# men
+dm = data.frame(  Y = c(1, 1, 0, 0),
+                  L = c(1, 0, 1, 0),
+                  n = c( 64, 17, 1790-64, 605-17 ) )
+
+# P(Y = 1 | L=1) and P(Y = 1 | L=0) for mean
+( pm_1 = dm$n[ dm$L == 1 & dm$Y == 1 ] / sum(dm$n[ dm$L == 1 ]) )
+( pm_0 = dm$n[ dm$L == 0 & dm$Y == 1 ] / sum(dm$n[ dm$L == 0 ]) )
+
+# a bit different from 1.09 because mine is crude 
+( crudeRRm = pm_1/pm_0 )
+
+
+
+# ADJUSTED MULTIPLICATIVE EMM ----------------------
+
+# checked this section 2021-3-8
+
+# ~ Confounded point estimates and inference ----------------------
+
+# *adjusted* RR from Table 1
+RRw = 3.78
+RRm = 1.09
+( RRc = RRw/RRm )
+
+# approximate CI limits for RRc since paper only gives CI limits by stratum
+# these are on log-RR scale
+VarLogRRw = scrape_meta(est = RRw, hi = 8.72 )$vyi
+VarLogRRm = scrape_meta(est = RRm, hi = 1.94 )$vyi
+
+VarLogRRc = VarLogRRw + VarLogRRm
+
+
+# write to results
+# sanity check: they report p=0.02 for interaction (pg 4)
+resRRc = write_est_inf( est = log(RRc), 
+               var = VarLogRRc,
+               prefix = "RRc",
+               takeExp = TRUE )
+
+# ~ E-values ----------------------
+
+# non-monotonic confounding
+# take square roots
+( Emult = evalue( RR( sqrt(RRc) ),
+                  lo = sqrt( resRRc$lo ) )["E-values", c("point", "lower") ] )
+
+
+# monotonic confounding (regular E-value transformation)
+( Emult.mono = evalue( RR(RRc),
+                       lo = resRRc$lo )["E-values", c("point", "lower") ] )
+
+
+update_result_csv( name = "RRc est evalue",
+                   value = round( Emult[1], 2) )
+update_result_csv( name = "RRc lo evalue",
+                   value = round( Emult[2], 2) )
+
+update_result_csv( name = "RRc est evalue mono",
+                   value = round( Emult.mono[1], 2) )
+update_result_csv( name = "RRc lo evalue mono",
+                   value = round( Emult.mono[2], 2) )
+
+
+
+
+# UNADJUSTED ADDITIVE EMM ----------------------
+
+# ~ Confounded point estimates and inference ----------------------
+
+
+# we don't have adjusted probabilities, so instead use 
+#  crude ones
+
+# DO ME :)
+RDw = (pw_1 - pw_0)
+RDm = (pm_1 - pm_0)
+RDc = (pw_1 - pw_0) - (pm_1 - pm_0)
+
+
+# inference for risk differences
+VarRDw = var_RD(p1 = pw_1,
+                p0 = pw_0,
+                n1 = sum( dw$n[ dw$L == 1 ] ),
+                n0 = sum( dw$n[ dw$L == 0 ] ) )
+
+VarRDm = var_RD(p1 = pm_1,
+                p0 = pm_0,
+                n1 = sum( dm$n[ dm$L == 1 ] ),
+                n0 = sum( dm$n[ dm$L == 0 ] ) )
+
+
+( VarRDc = VarRDw + VarRDm )
+
+# write results
+update_result_csv( name = "RDc est",
+                   value = round(RRc, 2) )
+update_result_csv( name = "RDc lo",
+                   value = round(RRc.lo, 2) )
+update_result_csv( name = "RDc est",
+                   value = round(RRc.hi, 2) )
+
+
+
+
+
+# sanity check: they report p=0.02 for interaction (pg 4)
+#bm
+expect_equal( round( 2 * ( 1 - pnorm( abs( log(RRc) / sqrt(VarLogRRc) ) ) ), 2 ),
+              0.02 )
+
+( RRc.lo = RRc - qnorm(.975) * sqrt(VarLogRRc) )
+( RRc.hi = RRc + qnorm(.975) * sqrt(VarLogRRc) )
+
+# non-monotonic confounding
+# take square roots
+( Emult = evalue( sqrt(RR(RRc)), lo = sqrt(RRc.lo) )["E-values", c("point", "lower") ] )
+
+
+# monotonic confounding
+( Emult.mono = evalue( RR(RRc), lo = RRc.lo )["E-values", c("point", "lower") ] )
+
+
+# write to results
+update_result_csv( name = "RRc adj est",
+                   value = round(RRc, 2) )
+update_result_csv( name = "RRc adj lo",
+                   value = round(RRc.lo, 2) )
+update_result_csv( name = "RRc adj est",
+                   value = round(RRc.hi, 2) )
+
+update_result_csv( name = "RRc adj est evalue",
+                   value = round( Emult[1], 2) )
+update_result_csv( name = "RRc adj lo evalue",
+                   value = round( Emult[2], 2) )
+
+update_result_csv( name = "RRc adj est evalue mono",
+                   value = round( Emult.mono[1], 2) )
+update_result_csv( name = "RRc adj lo evalue mono",
+                   value = round( Emult.mono[2], 2) )
+
+
+
+
+
+
+
+
+
+
+# FROM OLDER WORK ----------------------
+
+
+
+# plot it along with the normal E-value
+library(ggplot2)
+
+
+dp = data.frame( RR = seq(1,5,.001) )
+dp$evalue = dp$RR + sqrt( dp$RR * (dp$RR - 1) )
+dp$evalueInt = sqrt(dp$RR) + sqrt( sqrt(dp$RR) * ( sqrt(dp$RR) - 1) )
+
+ggplot( data = dp ) +
+  
+  geom_abline(intercept = 0,
+              slope = 1,
+              lty = 2,
+              color = "gray") +
+  
+  geom_line(size = 1,  aes( x = RR,
+                            y = evalue)) +
+  geom_line(size = 1,  aes( x = RR,
+                            y = evalueInt)) +
+  theme_classic() +
+  
+  scale_x_continuous( limits = c(1, max(dp$RR)),
+                      breaks = seq(1,max(dp$RR),.5)) +
+  
+  scale_y_continuous( limits = c(1,5),
+                      breaks = seq(1,5,.5)) +
+  
+  xlab(bquote(RR[XY]^c)) + 
+  ylab("E-value")
+
+
+
+
+
+
+
+
+
+
+
+
