@@ -27,6 +27,9 @@ results.dir = here("Applied example/Results from R")
 # for writing results to Overleaf papers
 overleaf.dir = "~/Dropbox/Apps/Overleaf/EEMM: E-values for effect modification and interaction/R_objects"
 
+setwd( here("Applied example/Code") )
+source("helper.R")
+
 
 # ENTER DATA (CELL COUNTS) ----------------------
 
@@ -52,7 +55,7 @@ nw_0 = 364
 
 dw = data.frame(  Y = c(1, 1, 0, 0),
                   L = c(1, 0, 1, 0),
-                 n = c( 158, 6, nw_1-158, nw_0-6 ) )
+                  n = c( 158, 6, nw_1-158, nw_0-6 ) )
 
 # P(Y = 1 | L=1) and P(Y = 1 | L=0) for women
 ( pw_1 = dw$n[ dw$L == 1 & dw$Y == 1 ] / sum(dw$n[ dw$L == 1 ]) )
@@ -63,6 +66,13 @@ dw = data.frame(  Y = c(1, 1, 0, 0),
 
 # HR using person-years from table: 3.01 (still different)
 (158/6920) / (6/792)
+
+# prevalence of low education among women
+fw = nw_1 / (nw_1 + nw_0)
+
+# total N for women
+update_result_csv( name = "n women",
+                   value = nw_1 + nw_0 )
 
 
 # ~ Men ----------------------
@@ -85,6 +95,12 @@ dm = data.frame(  Y = c(1, 1, 0, 0),
 # a bit different from 1.09 because mine is crude 
 ( crudeRRm = pm_1/pm_0 )
 
+# prevalence of low education among men
+fm = nm_1 / (nm_1 + nm_0)
+
+# total N for men
+update_result_csv( name = "n men",
+                   value = nm_1 + nm_0 )
 
 
 # ADJUSTED MULTIPLICATIVE EMM ----------------------
@@ -109,9 +125,9 @@ VarLogRRc = VarLogRRw + VarLogRRm
 # write to results
 # sanity check: they report p=0.02 for interaction (pg 4)
 resRRc = write_est_inf( est = log(RRc), 
-               var = VarLogRRc,
-               prefix = "RRc",
-               takeExp = TRUE )
+                        var = VarLogRRc,
+                        prefix = "RRc",
+                        takeExp = TRUE )
 
 # ~ E-values ----------------------
 
@@ -146,30 +162,58 @@ update_result_csv( name = "RRc lo evalue mono",
 # we don't have adjusted probabilities, so instead use 
 #  crude ones
 
-# DO ME :)
-RDw = (pw_1 - pw_0)
-RDm = (pm_1 - pm_0)
-RDc = (pw_1 - pw_0) - (pm_1 - pm_0)
+# get confounded estimates for each stratum and for EMM
+RDs = RDt_bound( pw_1 = pw_1,
+                 pw_0 = pw_0,
+                 nw_1 = nw_1,
+                 nw_0 = nw_0,
+                 fw = fw,
+                 
+                 pm_1 = pm_1,
+                 pm_0 = pm_0,
+                 nm_1 = nm_1,
+                 nm_0 = nm_0,
+                 fm = fm,
+                 
+                 .max = 1 )
 
-# sanity check
-expect_equal( RDw,
+
+# ~~ sanity checks ----------------------
+#@eventually move to testthat in R package
+
+# check point estimates
+expect_equal( RDs$RD[ RDs$stratum == "1" ],
+              pw_1 - pw_0,
               158/nw_1 - 6/nw_0 )
-expect_equal( RDm,
-              64/nm_1 - 17/nm_0 )
+
+expect_equal( RDs$RD[ RDs$stratum == "0" ],
+              pm_1 - pm_0,
+              158/nm_1 - 6/nm_0 )
+
+expect_equal( RDs$RD[ RDs$stratum == "effectMod" ],
+              (pw_1 - pw_0) - (pm_1 - pm_0) )
+
+# check E-values within each stratum to R package
 
 
-# inference for risk differences
-VarRDw = var_RD(p1 = pw_1,
-                p0 = pw_0,
-                n1 = nw_1,
-                n0 = nw_0 )
 
-VarRDm = var_RD(p1 = pm_1,
-                p0 = pm_0,
-                n1 = nm_1,
-                n0 = nm_0 )
 
-( VarRDc = VarRDw + VarRDm )
+
+
+# # inference for risk differences
+# VarRDw = var_RD(p1 = pw_1,
+#                 p0 = pw_0,
+#                 n1 = nw_1,
+#                 n0 = nw_0 )
+# 
+# VarRDm = var_RD(p1 = pm_1,
+#                 p0 = pm_0,
+#                 n1 = nm_1,
+#                 n0 = nm_0 )
+# 
+# ( VarRDc = VarRDw + VarRDm )
+
+# end sanity checks
 
 
 
@@ -199,14 +243,63 @@ expect_equal( RDw - 1.96 * sqrt(VarRDw),
 
 # ~ E-values ----------------------
 
-
 # non-monotonic confounding
-# take square roots
-( Emult = evalue( sqrt(RR(RRc)), lo = sqrt(RRc.lo) )["E-values", c("point", "lower") ] )
+#bm
+RDc_bound( pw_1 = pw_1,
+           pw_0 = pw_0,
+           fw = fw,
+           
+           pm_1 = pm_1,
+           pm_0 = pm_0,
+           fm = fm,
+           
+           .max = 1.1 )
 
 
-# monotonic confounding
-( Emult.mono = evalue( RR(RRc), lo = RRc.lo )["E-values", c("point", "lower") ] )
+Eadd = RDc_evalue( pw_1 = pw_1,
+                   pw_0 = pw_0,
+                   fw = fw,
+                   
+                   pm_1 = pm_1,
+                   pm_0 = pm_0,
+                   fm = fm )
+
+
+# sanity check: plot the bound as fn of max
+library(ggplot2)
+
+dp = data.frame( bias = seq(1,5,.001) )
+dp$bound = RDc_bound( pw_1 = pw_1,
+                      pw_0 = pw_0,
+                      fw = fw,
+                      
+                      pm_1 = pm_1,
+                      pm_0 = pm_0,
+                      fm = fm,
+                      
+                      .max = dp$bias )
+
+ggplot( data = dp ) +
+  
+  geom_hline( yintercept = RDc, 
+              lty = 2,
+              color = "red") +
+  geom_line(size = 1,  aes( x = bias,
+                            y = bound)) +
+  
+  theme_classic() +
+  
+  scale_x_continuous( limits = c(1, max(dp$bias)),
+                      breaks = seq(1,max(dp$bias),.5)) +
+  
+  # scale_y_continuous( limits = c(1,max(dp$bound)),
+  #                     breaks = seq(1,max(dp$bound),.5)) +
+  
+  #xlab(bquote(RR[XY]^c)) +
+  xlab("Bias factor") +
+  ylab("Bound on RD")
+
+
 
 
 # write to results
