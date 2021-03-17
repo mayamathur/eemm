@@ -22,6 +22,8 @@ g = function(RR) {
   RR + sqrt( RR * (RR - 1) )
 }
 
+# inverse of g (E-value -> bias factor)
+
 
 # BIG STATS FUNCTIONS ----------------------
 
@@ -34,21 +36,58 @@ var_prop = function(p, n) ( p * (1 - p) ) / n
 # Ding & VanderWeele, eAppendix 5 (delta method)
 RDt_var = function(f, p1, p0, n1, n0, .maxB) {
   
-  f.var = var_prop(p = f, n = n1 + n0)
-  p1.var = var_prop(p = p1, n = n1)
-  p0.var = var_prop(p = p0, n = n0)
+  #@assumes that we always consider bias away from null 
+  # if risk difference < 0, reverse strata coding in order to
+  #  apply same bound
+  if ( p1 - p0 < 0 ){
+    .p0 = p1
+    .p1 = p0
+    .n0 = n1
+    .n1 = n0
+    .f = 1 - f  # prevalence of exposure
+  } else {
+    .p0 = p0
+    .p1 = p1
+    .n0 = n0
+    .n1 = n1
+    .f = f 
+  }
+  
+  f.var = var_prop(p = .f, n = .n1 + .n0)
+  p1.var = var_prop(p = .p1, n = .n1)
+  p0.var = var_prop(p = .p0, n = .n0)
   
   term1 = p1.var + p0.var * .maxB^2
-  term2 = ( f + (1 - f) / .maxB )^2
-  term3 = ( p1 - p0 * .maxB )^2 * ( 1 - 1/.maxB )^2 * f.var
+  term2 = ( .f + (1 - .f) / .maxB )^2
+  term3 = ( .p1 - .p0 * .maxB )^2 * ( 1 - 1/.maxB )^2 * f.var
   
   return( term1 * term2 + term3 )
 }
+
+# # sanity check for symmetry
+# v1 = RDt_var( f = .25,
+#               p1 = 0.3,
+#               p0 = 0.1,
+#               n1 = 50,
+#               n0 = 100,
+#               .maxB = 2 )
+# 
+# # here I've changed argument order to reverse sign of RD
+# v2 = RDt_var( f = 1-.25,
+#               p0 = 0.3,
+#               p1 = 0.1,
+#               n0 = 50,
+#               n1 = 100,
+#               .maxB = 2 )
+# 
+# expect_equal(v1, v2)
 
 
 # corrected RD for a given amount of bias
 # @needs to accept argument "true"
 # .maxB: the bias factor, NOT the Evalue!
+#@always shifts stratum W up and stratum M down, so assumes they are ordered
+# and shifts each stratum by same bias factor .maxB
 RDt_bound = function( pw_1,
                       pw_0,
                       nw_1,
@@ -65,20 +104,15 @@ RDt_bound = function( pw_1,
                       
                       .maxB ) {
   
+  if ( pw_1 - pw_0 < 0 ) stop("Preventive RDw case not handled")
+  if ( pm_1 - pm_0 > 0 ) stop("Causative RDm case not handled")
+  
   #browser()
-  # TEST ONLY
-  #.maxB = 1
-  
-
-  # c.f. R package:
-  # est.BF = (sqrt((true + diff)^2 + 4 * p1 * p0 * f * (1 - 
-  #                                                       f)) - (true + diff))/(2 * p0 * f)
-  # est.Evalue = threshold(est.BF)
-  
   ### Corrected point estimate
-  # corrected RD for X=1 (women) stratum
+  # corrected RD for X=1 (women) stratum (shift upward) - pg 376
   RDtW = ( pw_1 - pw_0 * .maxB ) * ( fw + ( 1 - fw ) / .maxB )
-  # corrected RD for X=0 (men) stratum
+  # corrected RD for X=0 (men) stratum (shift downward) - pg 376
+  #@think fm needs to be (1-fm) here:
   RDtM = ( pm_1 * .maxB - pm_0 ) * ( fm + ( 1 - fm ) / .maxB )
   
   RDt = RDtW - RDtM
@@ -123,8 +157,27 @@ RDt_bound = function( pw_1,
   return(res)
 }
 
+# sanity check for symmetry
+# only paying attention to RDw here
+x1 = RDt_bound( pw_1 = 0.6,
+                pw_0 = 0.4,
+                nw_1 = 100,
+                nw_0 = 10,
+                fw = 0.25,
+                
+                pm_1 = 0.4,
+                pm_0 = 0.6,
+                nm_1 = 10,
+                nm_0 = 100,
+                fm = 0.75,
+                
+                alpha = 0.05,
+                
+                .maxB = 2 )
 
-# returns distance from RDt
+
+
+# returns distance of RDt for a given bias factor from desired true value ("true")
 # var: "RD" or "lo" for which to set to 0
 # ...: args to be passed to RDt_bound
 RD_distance = function(stratum,
@@ -176,8 +229,7 @@ RDc_evalue = function( stratum,
                        
                        alpha = 0.05 ) {
   
-  #@SAVE THIS IN R NOTES!
-  # HOW TO PASS ALL (NAMED) ARGS TO ANOTHER FN:
+  # prepare to pass all arguments to another fn
   # https://stackoverflow.com/questions/29327423/use-match-call-to-pass-all-arguments-to-other-function
   # "-1" removes the name of the fn that was called ("RDc_evalue")
   .args = as.list(match.call()[-1])
@@ -193,63 +245,68 @@ RDc_evalue = function( stratum,
   maximum = FALSE )
   
   return( data.frame( evalue = g(opt$minimum),
+                      bias = opt$minimum,
                       bound = opt$objective ) )
   
 }
 
 
+# # ~ Sanity checks to save -----------------
+# ( evalueEst = RDc_evalue( stratum = "1",
+#                        varName = "RD",
+#                        true = 0,
+#                        
+#                        pw_1,
+#                        pw_0,
+#                        nw_1,
+#                        nw_0,
+#                        fw,
+#                        
+#                        pm_1,
+#                        pm_0,
+#                        nm_1,
+#                        nm_0,
+#                        fm,
+#                        
+#                        alpha = 0.05 ) )
+# 
+# 
+# ( evalueCI = RDc_evalue( stratum = "1",
+#                           varName = "lo",
+#                           true = 0,
+#                           
+#                           pw_1,
+#                           pw_0,
+#                           nw_1,
+#                           nw_0,
+#                           fw,
+#                           
+#                           pm_1,
+#                           pm_0,
+#                           nm_1,
+#                           nm_0,
+#                           fm,
+#                           
+#                           alpha = 0.05 ) )
+# 
+# 
+# # now try against package:
+# evalueOld = evalues.RD( n11 = dw$n[ dw$L == 1 & dw$Y == 1 ],
+#             n10 = dw$n[ dw$L == 1 & dw$Y == 0 ],
+#             n01 = dw$n[ dw$L == 0 & dw$Y == 1 ],
+#             n00 = dw$n[ dw$L == 0 & dw$Y == 0 ],
+#             true = 0,
+#             alpha = 0.05)
+# 
+# 
+# # they agree! :D
+# # woohoo!!!!!
+# evalueOld$est.Evalue; evalueEst$evalue
+# evalueOld$lower.Evalue; evalueCI$evalue
+# 
+# # end sanity checks
 
-( evalueEst = RDc_evalue( stratum = "1",
-                       varName = "RD",
-                       true = 0,
-                       
-                       pw_1,
-                       pw_0,
-                       nw_1,
-                       nw_0,
-                       fw,
-                       
-                       pm_1,
-                       pm_0,
-                       nm_1,
-                       nm_0,
-                       fm,
-                       
-                       alpha = 0.05 ) )
 
-
-( evalueCI = RDc_evalue( stratum = "1",
-                          varName = "lo",
-                          true = 0,
-                          
-                          pw_1,
-                          pw_0,
-                          nw_1,
-                          nw_0,
-                          fw,
-                          
-                          pm_1,
-                          pm_0,
-                          nm_1,
-                          nm_0,
-                          fm,
-                          
-                          alpha = 0.05 ) )
-
-
-# now try against package:
-evalueOld = evalues.RD( n11 = dw$n[ dw$L == 1 & dw$Y == 1 ],
-            n10 = dw$n[ dw$L == 1 & dw$Y == 0 ],
-            n01 = dw$n[ dw$L == 0 & dw$Y == 1 ],
-            n00 = dw$n[ dw$L == 0 & dw$Y == 0 ],
-            true = 0,
-            alpha = 0.05)
-
-
-# they agree! :D
-# woohoo!!!!!
-evalueOld$est.Evalue; evalueEst$evalue
-evalueOld$lower.Evalue; evalueCI$evalue
 
 # # from package
 # evalues.RD = function( n11, n10, n01, n00,  

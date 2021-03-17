@@ -21,3 +21,5 @@ RDc hi,0.05,NA
 RDc pval,0.010365,NA
 n men,2395,NA
 n women,3352,NA
+RDc est evalue,2.54,NA
+RDc lo evalue,1.44,NA

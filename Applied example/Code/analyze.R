@@ -19,6 +19,10 @@ library(MetaUtility)
 library(msm)
 library(here)
 library(testthat)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+# snapshot()
 
 options(scipen=999)
 
@@ -131,13 +135,14 @@ resRRc = write_est_inf( est = log(RRc),
 
 # ~ E-values ----------------------
 
-# non-monotonic confounding
+# ~~ Non-monotonic confounding ----------------------
 # take square roots
 ( Emult = evalue( RR( sqrt(RRc) ),
                   lo = sqrt( resRRc$lo ) )["E-values", c("point", "lower") ] )
 
 
-# monotonic confounding (regular E-value transformation)
+# ~~ Monotonic confounding ----------------------
+# (regular E-value transformation)
 ( Emult.mono = evalue( RR(RRc),
                        lo = resRRc$lo )["E-values", c("point", "lower") ] )
 
@@ -163,6 +168,7 @@ update_result_csv( name = "RRc lo evalue mono",
 #  crude ones
 
 # get confounded estimates for each stratum and for EMM
+# by passing bias factor of 1
 RDs = RDt_bound( pw_1 = pw_1,
                  pw_0 = pw_0,
                  nw_1 = nw_1,
@@ -177,27 +183,26 @@ RDs = RDt_bound( pw_1 = pw_1,
                  
                  .max = 1 )
 
+RDc = RDs$RD[ RDs$stratum == "effectMod" ]
+RDw = RDs$RD[ RDs$stratum == "1" ]
+RDm = RDs$RD[ RDs$stratum == "0" ]
+
+
 
 # ~~ sanity checks ----------------------
 #@eventually move to testthat in R package
 
 # check point estimates
-expect_equal( RDs$RD[ RDs$stratum == "1" ],
+expect_equal( RDw,
               pw_1 - pw_0,
               158/nw_1 - 6/nw_0 )
 
-expect_equal( RDs$RD[ RDs$stratum == "0" ],
+expect_equal( RDm,
               pm_1 - pm_0,
               158/nm_1 - 6/nm_0 )
 
-expect_equal( RDs$RD[ RDs$stratum == "effectMod" ],
+expect_equal( RDc,
               (pw_1 - pw_0) - (pm_1 - pm_0) )
-
-# check E-values within each stratum to R package
-
-
-
-
 
 
 # # inference for risk differences
@@ -243,93 +248,198 @@ expect_equal( RDw - 1.96 * sqrt(VarRDw),
 
 # ~ E-values ----------------------
 
-# non-monotonic confounding
-#bm
-RDc_bound( pw_1 = pw_1,
-           pw_0 = pw_0,
-           fw = fw,
-           
-           pm_1 = pm_1,
-           pm_0 = pm_0,
-           fm = fm,
-           
-           .max = 1.1 )
+
+# ~~ Non-monotonic confounding ----------------------
+( Eadd.est = RDc_evalue( stratum = "effectMod",
+                         varName = "RD",
+                         true = 0,
+                         
+                         pw_1 = pw_1,
+                         pw_0 = pw_0,
+                         nw_1 = nw_1,
+                         nw_0 = nw_0,
+                         fw = fw,
+                         
+                         pm_1 = pm_1,
+                         pm_0 = pm_0,
+                         nm_1 = nm_1,
+                         nm_0 = nm_0,
+                         fm = fm,
+                         
+                         alpha = 0.05 ) )
+
+( Eadd.CI = RDc_evalue( stratum = "effectMod",
+                        varName = "lo",
+                        true = 0,
+                        
+                        pw_1 = pw_1,
+                        pw_0 = pw_0,
+                        nw_1 = nw_1,
+                        nw_0 = nw_0,
+                        fw = fw,
+                        
+                        pm_1 = pm_1,
+                        pm_0 = pm_0,
+                        nm_1 = nm_1,
+                        nm_0 = nm_0,
+                        fm = fm,
+                        
+                        alpha = 0.05 ) )
+
+update_result_csv( name = "RDc est evalue",
+                   value = round( Eadd.est$evalue, 2) )
+update_result_csv( name = "RDc lo evalue",
+                   value = round( Eadd.CI$evalue, 2) )
 
 
-Eadd = RDc_evalue( pw_1 = pw_1,
+# ~~ Non-monotonic confounding ----------------------
+
+# shift only stratum 1 (to stratum 0) 
+RDc_evalue( stratum = "1",
+            varName = "RD",
+            true = RDm,
+            
+            pw_1 = pw_1,
+            pw_0 = pw_0,
+            nw_1 = nw_1,
+            nw_0 = nw_0,
+            fw = fw,
+            
+            pm_1 = pm_1,
+            pm_0 = pm_0,
+            nm_1 = nm_1,
+            nm_0 = nm_0,
+            fm = fm,
+            
+            alpha = 0.05 )
+
+# shift only stratum 0 (to stratum 1) 
+temp = RDc_evalue( stratum = "0",
+                   varName = "RD",
+                   true = RDw,
+                   
+                   pw_1 = pw_1,
                    pw_0 = pw_0,
+                   nw_1 = nw_1,
+                   nw_0 = nw_0,
                    fw = fw,
                    
                    pm_1 = pm_1,
                    pm_0 = pm_0,
-                   fm = fm )
+                   nm_1 = nm_1,
+                   nm_0 = nm_0,
+                   fm = fm,
+                   
+                   alpha = 0.05 )
 
+
+RDt_bound( pw_1 = pw_1,
+           pw_0 = pw_0,
+           nw_1 = nw_1,
+           nw_0 = nw_0,
+           fw = fw,
+           
+           pm_1 = pm_1,
+           pm_0 = pm_0,
+           nm_1 = nm_1,
+           nm_0 = nm_0,
+           fm = fm,
+           
+           .max = temp$bias )
+
+
+#bm
+
+
+
+# # MISC ----------------------
+
+
+# ~ Plot RDt bound as a function of bias factor ----------------------
 
 # sanity check: plot the bound as fn of max
 library(ggplot2)
 
 dp = data.frame( bias = seq(1,5,.001) )
-dp$bound = RDc_bound( pw_1 = pw_1,
-                      pw_0 = pw_0,
-                      fw = fw,
-                      
-                      pm_1 = pm_1,
-                      pm_0 = pm_0,
-                      fm = fm,
-                      
-                      .max = dp$bias )
 
-ggplot( data = dp ) +
+dp = dp %>% rowwise() %>%
+  mutate( boundW = RDt_bound( pw_1 = pw_1,
+                              pw_0 = pw_0,
+                              nw_1 = nw_1,
+                              nw_0 = nw_0,
+                              fw = fw,
+                              
+                              pm_1 = pm_1,
+                              pm_0 = pm_0,
+                              nm_1 = nm_1,
+                              nm_0 = nm_0,
+                              fm = fm,
+                              
+                              .max = bias )[1,"RD"],
+          
+          boundM = RDt_bound( pw_1 = pw_1,
+                              pw_0 = pw_0,
+                              nw_1 = nw_1,
+                              nw_0 = nw_0,
+                              fw = fw,
+                              
+                              pm_1 = pm_1,
+                              pm_0 = pm_0,
+                              nm_1 = nm_1,
+                              nm_0 = nm_0,
+                              fm = fm,
+                              
+                              .max = bias )[2,"RD"],
+          
+          boundEMM = RDt_bound( pw_1 = pw_1,
+                                pw_0 = pw_0,
+                                nw_1 = nw_1,
+                                nw_0 = nw_0,
+                                fw = fw,
+                                
+                                pm_1 = pm_1,
+                                pm_0 = pm_0,
+                                nm_1 = nm_1,
+                                nm_0 = nm_0,
+                                fm = fm,
+                                
+                                .max = bias )[3,"RD"] )
+
+xmax = max(dp$bias)
+#xmax = 1.5
+
+# reshape for plotting joy
+dp2 = dp %>% pivot_longer( !bias,
+                           names_to = "Estimate",
+                           values_to = "Value" )
+
+
+# **here, boundEMM is when bias is non-monotonic confounding
+#  and boundM and boundW are monotonic confounding (i.e., that stratum is the only one affected)
+ggplot( data = dp2 ) +
   
+  # line for the observed RDc
   geom_hline( yintercept = RDc, 
               lty = 2,
               color = "red") +
   geom_line(size = 1,  aes( x = bias,
-                            y = bound)) +
+                            y = Value,
+                            color = Estimate)) +
   
   theme_classic() +
   
-  scale_x_continuous( limits = c(1, max(dp$bias)),
-                      breaks = seq(1,max(dp$bias),.5)) +
+  scale_x_continuous( limits = c(1, xmax ),
+                      breaks = seq( 1, xmax, .5) ) +
   
   # scale_y_continuous( limits = c(1,max(dp$bound)),
   #                     breaks = seq(1,max(dp$bound),.5)) +
   
   #xlab(bquote(RR[XY]^c)) +
   xlab("Bias factor") +
-  ylab("Bound on RD")
+  ylab("Bound on RDt")
 
 
 
-
-# write to results
-update_result_csv( name = "RRc adj est",
-                   value = round(RRc, 2) )
-update_result_csv( name = "RRc adj lo",
-                   value = round(RRc.lo, 2) )
-update_result_csv( name = "RRc adj est",
-                   value = round(RRc.hi, 2) )
-
-update_result_csv( name = "RRc adj est evalue",
-                   value = round( Emult[1], 2) )
-update_result_csv( name = "RRc adj lo evalue",
-                   value = round( Emult[2], 2) )
-
-update_result_csv( name = "RRc adj est evalue mono",
-                   value = round( Emult.mono[1], 2) )
-update_result_csv( name = "RRc adj lo evalue mono",
-                   value = round( Emult.mono[2], 2) )
-
-
-
-
-
-
-
-
-
-
-# # FROM OLDER WORK ----------------------
 # 
 # 
 # 
