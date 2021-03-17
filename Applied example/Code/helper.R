@@ -44,21 +44,19 @@ RDt_var = function(f, p1, p0, n1, n0, .maxB) {
     .p1 = p0
     .n0 = n1
     .n1 = n0
-    .f = 1 - f  # prevalence of exposure
   } else {
     .p0 = p0
     .p1 = p1
     .n0 = n0
     .n1 = n1
-    .f = f 
   }
   
-  f.var = var_prop(p = .f, n = .n1 + .n0)
+  f.var = var_prop(p = f, n = .n1 + .n0)
   p1.var = var_prop(p = .p1, n = .n1)
   p0.var = var_prop(p = .p0, n = .n0)
   
   term1 = p1.var + p0.var * .maxB^2
-  term2 = ( .f + (1 - .f) / .maxB )^2
+  term2 = ( f + (1 - f) / .maxB )^2
   term3 = ( .p1 - .p0 * .maxB )^2 * ( 1 - 1/.maxB )^2 * f.var
   
   return( term1 * term2 + term3 )
@@ -107,13 +105,11 @@ RDt_bound = function( pw_1,
   if ( pw_1 - pw_0 < 0 ) stop("Preventive RDw case not handled")
   if ( pm_1 - pm_0 > 0 ) stop("Causative RDm case not handled")
   
-  #browser()
   ### Corrected point estimate
   # corrected RD for X=1 (women) stratum (shift upward) - pg 376
   RDtW = ( pw_1 - pw_0 * .maxB ) * ( fw + ( 1 - fw ) / .maxB )
   # corrected RD for X=0 (men) stratum (shift downward) - pg 376
-  #@think fm needs to be (1-fm) here:
-  RDtM = ( pm_1 * .maxB - pm_0 ) * ( fm + ( 1 - fm ) / .maxB )
+  RDtM = ( pm_1 * .maxB - pm_0 ) * ( fm + ( 1 - fm )/.maxB )  # without recoding f
   
   RDt = RDtW - RDtM
   
@@ -158,7 +154,7 @@ RDt_bound = function( pw_1,
 }
 
 # sanity check for symmetry
-# only paying attention to RDw here
+# RDw and RDm should match here by symmetry
 x1 = RDt_bound( pw_1 = 0.6,
                 pw_0 = 0.4,
                 nw_1 = 100,
@@ -169,11 +165,54 @@ x1 = RDt_bound( pw_1 = 0.6,
                 pm_0 = 0.6,
                 nm_1 = 10,
                 nm_0 = 100,
-                fm = 0.75,
+                fm = .25,
                 
                 alpha = 0.05,
                 
                 .maxB = 2 )
+
+expect_equal( x1$RD[1], -x1$RD[2] )
+expect_equal( x1$se[1], x1$se[2] )
+
+
+# p1 = 0.6
+# p0 = 0.4
+# f = 0.25
+# n = 1000
+# X1 = rbinom( n = n, size = 1, prob = f )
+# Y = rep(NA, n)
+# Y[ X1 == 1 ] = rbinom( n = sum(X1 == 1), size = 1, prob = p1 )
+# Y[ X1 == 0 ] = rbinom( n = sum(X1 == 0), size = 1, prob = p0 )
+# 
+# # risk difference
+# mean(Y[ X1 == 1 ]) - mean(Y[ X1 == 0 ]); p1 - p0
+# 
+# X2 = (X1 == 0)  # recoded exposure
+# 
+# # bm: Come back. Not understanding the recoding issue...
+# RDt_bound( pw_1 = mean(Y[ X1 == 1 ]),
+#            pw_0 = mean(Y[ X1 == 0 ]),
+#            nw_1 = sum(X1==1),
+#            nw_0 = sum(X1==0),
+#            fw = mean(X1==1),
+#            
+#            pm_1 = mean(Y[ X2 == 1 ]),
+#            pm_0 = mean(Y[ X2 == 0 ]),
+#            nm_1 = sum(X2==1),
+#            nm_0 = sum(X2==0),
+#            fm = mean(X2==1),
+#            
+#            alpha = 0.05,
+#            
+#            .maxB = 2 )
+# 
+
+
+
+
+
+
+
 
 
 
