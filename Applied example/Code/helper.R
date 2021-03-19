@@ -313,12 +313,10 @@ RD_distance = function(stratum,
 
 
 
-
-
-
-
 # varName: as in RD_distance, lets you choose point estimate or CI limit for E-value
 # monotonicBias: "no" (non-monotonic), "positive", "negative"
+# does NOT consider monontonic bias in arbitrary direction; for that, need to call 
+#  the wrapper IC_evalue_outer, which calls IC_evalue twice for each candidate bias direction
 # also gives E-values for each stratum separately if wanted (based on varName)
 IC_evalue = function( stratum,
                       varName,
@@ -455,7 +453,7 @@ IC_evalue = function( stratum,
 # expect_equal( evalueOld$lower.Evalue, evalueCI$evalue, tol = 0.001 )
 # # end sanity checks
 
-# allows monotonic bias without assuming direction by calling IC_evalue twice
+# looks at monotonic bias without assuming direction by calling IC_evalue twice
 # NOT in shape for package
 # lots of dataset-specific things in here
 IC_evalue_outer = function(varName) {
