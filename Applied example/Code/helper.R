@@ -1,35 +1,17 @@
-# SMALL STATS FUNCTIONS ----------------------
 
-quick_ci = function( est, var ) {
-  c( est - qnorm(.975) * sqrt(var),
-     est + qnorm(.975) * sqrt(var) )
-}
+# USAGE NOTES ----------------------
 
-quick_pval = function( est, var ) {
-  2 * ( 1 - pnorm( abs( est / sqrt(var) ) ) )
-}
+# Algorithm structure:
+# IC_evalue > RD_distance > RDt_bound < RDt_var
 
-
-
-var_RD = function(p1, p0, n1, n0) {
-  num = ( p1 * ( 1 - p1 ) ) / n1
-  denom = ( p0 * ( 1 - p0 ) ) / n0
-  num + denom
-}
-
-# basic E-value transformation
-g = function(RR) {
-  RR + sqrt( RR * (RR - 1) )
-}
-
-# inverse of g (E-value -> bias factor)
-
+# If you eventually move these fns to package, note that:
+#  - Will need to think through fns' assumptions about signs 
+#    (e.g., RDc < 0 case)
+#  - Have not dealt with weird cases like if IC^c is already less than IC^t 
+#    IC_evalue will probably complain about sqrt(RR * (RR - 1)) being undef'nd in that case
+#  - Search "#@" for notes on other assumptions in fns that would need to be gnlz'd  
 
 # BIG STATS FUNCTIONS ----------------------
-
-
-# quick variance of proportion
-var_prop = function(p, n) ( p * (1 - p) ) / n
 
 # bias-corrected variance for one stratum
 # Ding & VanderWeele, eAppendix 5 (delta method)
@@ -114,7 +96,7 @@ RDt_bound = function( pw_1,
   #   biasDir_m = "negative"
   #   message("Assuming same bias in each stratum because you didn't provide maxB_m")
   # }
-
+  
   ### Corrected point estimate
   # corrected RD for each stratum - pg 376
   if ( biasDir_w == "positive" ) RDtW = ( pw_1 - pw_0 * maxB_w ) * ( fw + ( 1 - fw ) / maxB_w )
@@ -129,8 +111,7 @@ RDt_bound = function( pw_1,
   # should recover uncorrected RDs when there is no bias
   if ( maxB_w == 1 ) expect_equal(RDtW, pw_1 - pw_0)
   if ( maxB_m == 1 ) expect_equal(RDtM, pm_1 - pm_0)
-  
-  #bm
+
   
   ### Corrected confidence interval
   # calculate var for each stratum (W and M) separately
@@ -286,9 +267,11 @@ RDt_bound = function( pw_1,
 
 
 
-# returns distance of RDt for a given bias factor from desired true value ("true")
-# var: "RD" or "lo" for which to set to 0
+# returns distance of a statistic for a given bias factor from desired true value ("true")
+# varName: the statistic (of those returned by RDt_bound: "RD", "lo", "hi") whose distance from "true"
+#  should be measured
 # ...: args to be passed to RDt_bound
+
 RD_distance = function(stratum,
                        varName,
                        true,
@@ -299,108 +282,152 @@ RD_distance = function(stratum,
 }
 
 
-# RD_distance( .maxB = 1,
-# 
-#              stratum = "effectMod",
+# RD_distance( stratum = "effectMod",
 #              varName = "RD",
-# 
+#              true = 0.01,
+#              
+#              # everything to follow is passed to RD_distance
 #              pw_1 = pw_1,
 #              pw_0 = pw_0,
 #              nw_1 = nw_1,
 #              nw_0 = nw_0,
 #              fw = fw,
+#              biasDir_w = "positive",
+#              maxB_w = 1,
 # 
 #              pm_1 = pm_1,
 #              pm_0 = pm_0,
 #              nm_1 = nm_1,
 #              nm_0 = nm_0,
 #              fm = fm,
+#              biasDir_m = "positive",
+#              maxB_m = 1,
 # 
-#              true = 0,
-#              alpha = alpha )
+#              alpha = 0.05 )
 
-
-RDc_evalue = function( stratum,
-                       varName,
-                       true = 0,
-                       
-                       pw_1,
-                       pw_0,
-                       nw_1,
-                       nw_0,
-                       fw,
-                       
-                       pm_1,
-                       pm_0,
-                       nm_1,
-                       nm_0,
-                       fm,
-                       
-                       alpha = 0.05 ) {
+# varName: as in RD_distance, lets you choose point estimate or CI limit for E-value
+# monotonicBias: "no" (non-monotonic), "positive", "negative"
+# also gives E-values for each stratum separately if wanted (based on varName)
+IC_evalue = function( stratum,
+                      varName,
+                      true = 0,
+                      monotonicBias = "no",
+                      
+                      pw_1,
+                      pw_0,
+                      nw_1,
+                      nw_0,
+                      fw,
+                      
+                      pm_1,
+                      pm_0,
+                      nm_1,
+                      nm_0,
+                      fm,
+                      
+                      alpha = 0.05 ) {
   
+
   # prepare to pass all arguments to another fn
   # https://stackoverflow.com/questions/29327423/use-match-call-to-pass-all-arguments-to-other-function
-  # "-1" removes the name of the fn that was called ("RDc_evalue")
+  # "-1" removes the name of the fn that was called ("IC_evalue")
   .args = as.list(match.call()[-1])
+  # remove other args that are not to be passed to RD_distance
+  .args = .args[ !names(.args) %in% c("monotonicBias") ]
   
   # # test match.call situation
   # .args$.maxB = 5
   # do.call(RD_distance, .args)
   
-  #@ revisit upper bound of search space (500)
-  opt = optimize( f = function(x){ .args$.maxB = x
-                                    do.call( RD_distance, .args ) },
-  interval = c(0, 500),
-  maximum = FALSE )
+  ### Set up the bounding factor fn to be maximized to get the E-value
+  # depends on biasDir assumptions
+  #@assumes W stratum > 0 and M is < 0
+  #so basically need to warn user to recode exposure if IC^c < 0 
+  if ( monotonicBias == "no" ) {
+     boundfn = function(x){
+       .args$maxB_w = x
+       .args$biasDir_w = "positive"
+       .args$maxB_m = x
+       .args$biasDir_m = "negative"
+        do.call( RD_distance, .args )
+     }
+  }
   
+  if ( monotonicBias == "positive" ) {
+    boundfn = function(x){
+      .args$maxB_w = x
+      .args$biasDir_w = "positive"
+      .args$maxB_m = 1  # no bias in this stratum
+      .args$biasDir_m = "positive"
+      do.call( RD_distance, .args )
+    }
+  }
+  
+  if ( monotonicBias == "negative" ) {
+    boundfn = function(x){
+      .args$maxB_w = 1 # no bias in this stratum
+      .args$biasDir_w = "negative"
+      .args$maxB_m = x
+      .args$biasDir_m = "positive"
+      do.call( RD_distance, .args )
+    }
+  }
+  
+  #@ revisit upper bound of search space (500)
+  opt = optimize( f = boundfn,
+                  interval = c(0, 500),
+                  maximum = FALSE )
+                  
   return( data.frame( evalue = g(opt$minimum),
-                      bias = opt$minimum,
+                      bias = opt$minimum,  # not the bias factor, but the regular bias
                       bound = opt$objective ) )
   
 }
 
 
 # # ~ Sanity checks to save -----------------
-# ( evalueEst = RDc_evalue( stratum = "1",
+# ( evalueEst = IC_evalue( stratum = "1",
 #                        varName = "RD",
 #                        true = 0,
-#                        
+#                        monotonicBias = "no",
+# 
 #                        pw_1,
 #                        pw_0,
 #                        nw_1,
 #                        nw_0,
 #                        fw,
-#                        
+# 
 #                        pm_1,
 #                        pm_0,
 #                        nm_1,
 #                        nm_0,
 #                        fm,
-#                        
+# 
 #                        alpha = 0.05 ) )
 # 
 # 
-# ( evalueCI = RDc_evalue( stratum = "1",
+# ( evalueCI = IC_evalue( stratum = "1",
 #                           varName = "lo",
 #                           true = 0,
-#                           
+#                         monotonicBias = "no",
+# 
 #                           pw_1,
 #                           pw_0,
 #                           nw_1,
 #                           nw_0,
 #                           fw,
-#                           
+# 
 #                           pm_1,
 #                           pm_0,
 #                           nm_1,
 #                           nm_0,
 #                           fm,
-#                           
+# 
 #                           alpha = 0.05 ) )
 # 
 # 
 # # now try against package:
-# evalueOld = evalues.RD( n11 = dw$n[ dw$L == 1 & dw$Y == 1 ],
+# evalueOld = EValue::evalues.RD( n11 = dw$n[ dw$L == 1 & dw$Y == 1 ],
 #             n10 = dw$n[ dw$L == 1 & dw$Y == 0 ],
 #             n01 = dw$n[ dw$L == 0 & dw$Y == 1 ],
 #             n00 = dw$n[ dw$L == 0 & dw$Y == 0 ],
@@ -410,9 +437,8 @@ RDc_evalue = function( stratum,
 # 
 # # they agree! :D
 # # woohoo!!!!!
-# evalueOld$est.Evalue; evalueEst$evalue
-# evalueOld$lower.Evalue; evalueCI$evalue
-# 
+# expect_equal( evalueOld$est.Evalue, evalueEst$evalue, tol = 0.001 )
+# expect_equal( evalueOld$lower.Evalue, evalueCI$evalue, tol = 0.001 )
 # # end sanity checks
 
 
@@ -492,6 +518,36 @@ RDc_evalue = function( stratum,
 #   }
 #   
 # }
+
+
+# SMALL STATS FUNCTIONS ----------------------
+
+# quick variance of proportion
+var_prop = function(p, n) ( p * (1 - p) ) / n
+
+
+quick_ci = function( est, var ) {
+  c( est - qnorm(.975) * sqrt(var),
+     est + qnorm(.975) * sqrt(var) )
+}
+
+quick_pval = function( est, var ) {
+  2 * ( 1 - pnorm( abs( est / sqrt(var) ) ) )
+}
+
+
+
+var_RD = function(p1, p0, n1, n0) {
+  num = ( p1 * ( 1 - p1 ) ) / n1
+  denom = ( p0 * ( 1 - p0 ) ) / n0
+  num + denom
+}
+
+# basic E-value transformation
+g = function(RR) {
+  RR + sqrt( RR * (RR - 1) )
+}
+
 
 
 # FORMATTING ----------------------
@@ -593,3 +649,6 @@ vr = function(){
   setwd(results.dir)
   View( read.csv("stats_for_paper.csv") )
 }
+
+
+

@@ -252,7 +252,7 @@ expect_equal( RDw - 1.96 * sqrt(VarRDw),
 
 
 # ~~ Non-monotonic confounding ----------------------
-( Eadd.est = RDc_evalue( stratum = "effectMod",
+( Eadd.est = IC_evalue( stratum = "effectMod",
                          varName = "RD",
                          true = 0,
                          
@@ -270,7 +270,7 @@ expect_equal( RDw - 1.96 * sqrt(VarRDw),
                          
                          alpha = 0.05 ) )
 
-( Eadd.CI = RDc_evalue( stratum = "effectMod",
+( Eadd.CI = IC_evalue( stratum = "effectMod",
                         varName = "lo",
                         true = 0,
                         
@@ -297,7 +297,7 @@ update_result_csv( name = "RDc lo evalue",
 # ~~ Monotonic confounding ----------------------
 
 # shift only stratum 1 (to stratum 0) 
-RDc_evalue( stratum = "1",
+IC_evalue( stratum = "1",
             varName = "RD",
             true = RDm,  # shift to the other stratum
             
@@ -316,7 +316,7 @@ RDc_evalue( stratum = "1",
             alpha = 0.05 )
 
 # shift only stratum 0 (to stratum 1) 
-temp = RDc_evalue( stratum = "0",
+temp = IC_evalue( stratum = "0",
                    varName = "RD",
                    true = RDw,  # shift to the other stratum
                    
