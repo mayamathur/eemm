@@ -102,8 +102,8 @@ RDt_bound = function( pw_1,
                       
                       .maxB ) {
   
-  if ( pw_1 - pw_0 < 0 ) stop("Preventive RDw case not handled")
-  if ( pm_1 - pm_0 > 0 ) stop("Causative RDm case not handled")
+  #if ( pw_1 - pw_0 < 0 ) stop("Preventive RDw case not handled")
+  #if ( pm_1 - pm_0 > 0 ) stop("Causative RDm case not handled")
   
   ### Corrected point estimate
   # corrected RD for X=1 (women) stratum (shift upward) - pg 376
@@ -153,28 +153,30 @@ RDt_bound = function( pw_1,
   return(res)
 }
 
-# sanity check for symmetry
-# RDw and RDm should match here by symmetry
-x1 = RDt_bound( pw_1 = 0.6,
-                pw_0 = 0.4,
-                nw_1 = 100,
-                nw_0 = 10,
-                fw = 0.25,
-                
-                pm_1 = 0.4,
-                pm_0 = 0.6,
-                nm_1 = 10,
-                nm_0 = 100,
-                fm = .25,
-                
-                alpha = 0.05,
-                
-                .maxB = 2 )
+# # sanity check for symmetry
+# # RDw and RDm should match here by symmetry
+# x1 = RDt_bound( pw_1 = 0.6,
+#                 pw_0 = 0.4,
+#                 nw_1 = 100,
+#                 nw_0 = 10,
+#                 fw = 0.25,
+#                 
+#                 pm_1 = 0.4,
+#                 pm_0 = 0.6,
+#                 nm_1 = 10,
+#                 nm_0 = 100,
+#                 fm = .25,
+#                 
+#                 alpha = 0.05,
+#                 
+#                 .maxB = 2 )
+# 
+# expect_equal( x1$RD[1], -x1$RD[2] )
+# expect_equal( x1$se[1], x1$se[2] )
 
-expect_equal( x1$RD[1], -x1$RD[2] )
-expect_equal( x1$se[1], x1$se[2] )
 
 
+# NOT IN USE:
 # p1 = 0.6
 # p0 = 0.4
 # f = 0.25

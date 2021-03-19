@@ -162,6 +162,9 @@ update_result_csv( name = "RRc lo evalue mono",
 
 # UNADJUSTED ADDITIVE EMM ----------------------
 
+#bm: Check through this code in light of recoding issue
+# 
+
 # ~ Confounded point estimates and inference ----------------------
 
 # we don't have adjusted probabilities, so instead use 
@@ -205,20 +208,19 @@ expect_equal( RDc,
               (pw_1 - pw_0) - (pm_1 - pm_0) )
 
 
-# # inference for risk differences
-# VarRDw = var_RD(p1 = pw_1,
-#                 p0 = pw_0,
-#                 n1 = nw_1,
-#                 n0 = nw_0 )
-# 
-# VarRDm = var_RD(p1 = pm_1,
-#                 p0 = pm_0,
-#                 n1 = nm_1,
-#                 n0 = nm_0 )
-# 
-# ( VarRDc = VarRDw + VarRDm )
+# inference for risk differences
+VarRDw = var_RD(p1 = pw_1,
+                p0 = pw_0,
+                n1 = nw_1,
+                n0 = nw_0 )
 
-# end sanity checks
+VarRDm = var_RD(p1 = pm_1,
+                p0 = pm_0,
+                n1 = nm_1,
+                n0 = nm_0 )
+
+( VarRDc = VarRDw + VarRDm )
+
 
 
 
@@ -292,12 +294,12 @@ update_result_csv( name = "RDc lo evalue",
                    value = round( Eadd.CI$evalue, 2) )
 
 
-# ~~ Non-monotonic confounding ----------------------
+# ~~ Monotonic confounding ----------------------
 
 # shift only stratum 1 (to stratum 0) 
 RDc_evalue( stratum = "1",
             varName = "RD",
-            true = RDm,
+            true = RDm,  # shift to the other stratum
             
             pw_1 = pw_1,
             pw_0 = pw_0,
@@ -316,7 +318,7 @@ RDc_evalue( stratum = "1",
 # shift only stratum 0 (to stratum 1) 
 temp = RDc_evalue( stratum = "0",
                    varName = "RD",
-                   true = RDw,
+                   true = RDw,  # shift to the other stratum
                    
                    pw_1 = pw_1,
                    pw_0 = pw_0,
@@ -348,7 +350,6 @@ RDt_bound( pw_1 = pw_1,
            .max = temp$bias )
 
 
-#bm
 
 
 
