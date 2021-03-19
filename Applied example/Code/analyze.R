@@ -312,14 +312,6 @@ update_result_csv( name = "RDc est evalue mono",
                    value = round( Eadd.est.mono$evalue, 2) )
 
 
-( Eadd.CI.mono = IC_evalue_outer( varName = "lo" ) )
-
-# which bias direction is the winner (minimizes the E-value)?
-Eadd.est.mono$evalueBiasDir
-
-update_result_csv( name = "RDc lo evalue mono",
-                   value = round( Eadd.CI.mono$evalue, 2) )
-
 # # sanity check: did Evalue candidate #1 successfully move RDw down to RDm?
 # x = RDt_bound( pw_1 = pw_1,
 #            pw_0 = pw_0,
@@ -360,87 +352,49 @@ update_result_csv( name = "RDc lo evalue mono",
 
 # ~~~ CI limit ----------------------
 
-# E-value candidate 1: Shift stratum W down to match stratum M
-( cand1 = IC_evalue( stratum = "effectMod",
-                     varName = "RD",
-                     true = 0,
-                     monotonicBias = "positive",
-                     
-                     pw_1 = pw_1,
-                     pw_0 = pw_0,
-                     nw_1 = nw_1,
-                     nw_0 = nw_0,
-                     fw = fw,
-                     
-                     pm_1 = pm_1,
-                     pm_0 = pm_0,
-                     nm_1 = nm_1,
-                     nm_0 = nm_0,
-                     fm = fm,
-                     
-                     alpha = 0.05 ) )
+( Eadd.CI.mono = IC_evalue_outer( varName = "lo" ) )
 
-# # sanity check
-# x = RDt_bound( pw_1 = pw_1,
-#            pw_0 = pw_0,
-#            nw_1 = nw_1,
-#            nw_0 = nw_0,
-#            fw = fw,
-#            biasDir_w = "positive",
-#            maxB_w = cand1$biasFactor,
-#            
-#            pm_1 = pm_1,
-#            pm_0 = pm_0,
-#            nm_1 = nm_1,
-#            nm_0 = nm_0,
-#            fm = fm,
-#            biasDir_m = "positive",
-#            maxB_m = 1 )
-# expect_equal( x$RD[ x$stratum == "1" ], RDm, tol = 0.0001 )
+# which bias direction is the winner (minimizes the E-value)?
+Eadd.est.mono$evalueBiasDir
 
+update_result_csv( name = "RDc lo evalue mono",
+                   value = round( Eadd.CI.mono$evalue, 2) )
 
-# E-value candidate 2: Shift stratum M up to match stratum W
-( cand2 = IC_evalue( stratum = "effectMod",
-                     varName = "RD",
-                     true = 0,
-                     monotonicBias = "negative",
-                     
-                     pw_1 = pw_1,
-                     pw_0 = pw_0,
-                     nw_1 = nw_1,
-                     nw_0 = nw_0,
-                     fw = fw,
-                     
-                     pm_1 = pm_1,
-                     pm_0 = pm_0,
-                     nm_1 = nm_1,
-                     nm_0 = nm_0,
-                     fm = fm,
-                     
-                     alpha = 0.05 ) )
+# sanity check: did Evalue candidate #1 successfully move RD_EMM CI limit to 0?
+( x = RDt_bound( pw_1 = pw_1,
+           pw_0 = pw_0,
+           nw_1 = nw_1,
+           nw_0 = nw_0,
+           fw = fw,
+           biasDir_w = "positive",
+           maxB_w = Eadd.CI.mono$candidates$biasFactor[ Eadd.CI.mono$candidates$biasDir == "positive" ],
 
-# # sanity check
-# ( x = RDt_bound( pw_1 = pw_1,
-#                pw_0 = pw_0,
-#                nw_1 = nw_1,
-#                nw_0 = nw_0,
-#                fw = fw,
-#                biasDir_w = "negative",
-#                maxB_w = 1,
-#                
-#                pm_1 = pm_1,
-#                pm_0 = pm_0,
-#                nm_1 = nm_1,
-#                nm_0 = nm_0,
-#                fm = fm,
-#                biasDir_m = "negative",
-#                maxB_m = cand2$biasFactor ) )
-# expect_equal( x$RD[ x$stratum == "0" ], RDw, tol = 0.0001 )
+           pm_1 = pm_1,
+           pm_0 = pm_0,
+           nm_1 = nm_1,
+           nm_0 = nm_0,
+           fm = fm,
+           biasDir_m = "positive",
+           maxB_m = 1 ) )
+expect_equal( x$lo[ x$stratum == "effectMod" ], 0, tol = 0.0001 )
 
+# sanity check: did Evalue candidate #2 successfully move RD_EMM CI limit to 0?
+( x = RDt_bound( pw_1 = pw_1,
+               pw_0 = pw_0,
+               nw_1 = nw_1,
+               nw_0 = nw_0,
+               fw = fw,
+               biasDir_w = "negative",
+               maxB_w = 1,
 
-# Choose candidate E-value that is smaller
-cand1$evalue; cand2$evalue  # second one wins (shifting M up)
-Eadd.est.mono = min(cand1$evalue, cand2$evalue)
+               pm_1 = pm_1,
+               pm_0 = pm_0,
+               nm_1 = nm_1,
+               nm_0 = nm_0,
+               fm = fm,
+               biasDir_m = "negative",
+               maxB_m = Eadd.CI.mono$candidates$biasFactor[ Eadd.CI.mono$candidates$biasDir == "negative" ] ) )
+expect_equal( x$lo[ x$stratum == "effectMod" ], 0, tol = 0.0001 )
 
 
 
