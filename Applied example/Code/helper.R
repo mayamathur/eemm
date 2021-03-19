@@ -103,7 +103,12 @@ RDt_bound = function( pw_1,
   if ( biasDir_w == "negative" ) RDtW = ( pw_1 * maxB_w - pw_0 ) * ( fw + ( 1 - fw ) / maxB_w )
   
   if ( biasDir_m == "positive" ) RDtM = ( pm_1 - pm_0 * maxB_m ) * ( fm + ( 1 - fm ) / maxB_m )
-  if ( biasDir_m == "negative" ) RDtM = ( pm_1 * maxB_m - pm_0 ) * ( fw + ( 1 - fm ) / maxB_m )
+  if ( biasDir_m == "negative" ) RDtM = ( pm_1 * maxB_m - pm_0 ) * ( fm + ( 1 - fm ) / maxB_m )
+  
+  # # old version (agrees numerically with the above)
+  # RDtW = ( pw_1 - pw_0 * .maxB ) * ( fw + ( 1 - fw ) / .maxB )
+  # # corrected RD for X=0 (men) stratum (shift downward) - pg 376
+  # RDtM = ( pm_1 * .maxB - pm_0 ) * ( fm + ( 1 - fm )/.maxB )  # without recoding f
   
   RDt = RDtW - RDtM
   
@@ -305,6 +310,13 @@ RD_distance = function(stratum,
 # 
 #              alpha = 0.05 )
 
+
+
+
+
+
+
+
 # varName: as in RD_distance, lets you choose point estimate or CI limit for E-value
 # monotonicBias: "no" (non-monotonic), "positive", "negative"
 # also gives E-values for each stratum separately if wanted (based on varName)
@@ -368,7 +380,7 @@ IC_evalue = function( stratum,
       .args$maxB_w = 1 # no bias in this stratum
       .args$biasDir_w = "negative"
       .args$maxB_m = x
-      .args$biasDir_m = "positive"
+      .args$biasDir_m = "negative"
       do.call( RD_distance, .args )
     }
   }
@@ -378,9 +390,11 @@ IC_evalue = function( stratum,
                   interval = c(0, 500),
                   maximum = FALSE )
                   
+  if ( abs( opt$objective - true ) > 0.001 ) warning("E-value didn't move estimate close enough to true value; look into optimize() call")
+
   return( data.frame( evalue = g(opt$minimum),
-                      bias = opt$minimum,  # not the bias factor, but the regular bias
-                      bound = opt$objective ) )
+                      biasFactor = opt$minimum,  # not the bias factor, but the regular bias
+                      bound = opt$objective ) )  # should be equal to true
   
 }
 
@@ -441,83 +455,61 @@ IC_evalue = function( stratum,
 # expect_equal( evalueOld$lower.Evalue, evalueCI$evalue, tol = 0.001 )
 # # end sanity checks
 
+# allows monotonic bias without assuming direction by calling IC_evalue twice
+# NOT in shape for package
+# lots of dataset-specific things in here
+IC_evalue_outer = function(varName) {
+  # E-value candidate 1: Shift stratum W down to match stratum M
+  ( cand1 = IC_evalue( stratum = "effectMod",
+                       varName = varName,
+                       true = 0,
+                       monotonicBias = "positive",
+                       
+                       pw_1 = pw_1,
+                       pw_0 = pw_0,
+                       nw_1 = nw_1,
+                       nw_0 = nw_0,
+                       fw = fw,
+                       
+                       pm_1 = pm_1,
+                       pm_0 = pm_0,
+                       nm_1 = nm_1,
+                       nm_0 = nm_0,
+                       fm = fm,
+                       
+                       alpha = 0.05 ) )
+  
+  # E-value candidate 2: Shift stratum M up to match stratum W
+  ( cand2 = IC_evalue( stratum = "effectMod",
+                       varName = varName,
+                       true = 0,
+                       monotonicBias = "negative",
+                       
+                       pw_1 = pw_1,
+                       pw_0 = pw_0,
+                       nw_1 = nw_1,
+                       nw_0 = nw_0,
+                       fw = fw,
+                       
+                       pm_1 = pm_1,
+                       pm_0 = pm_0,
+                       nm_1 = nm_1,
+                       nm_0 = nm_0,
+                       fm = fm,
+                       
+                       alpha = 0.05 ) )
+  
+  # Choose candidate E-value that is smaller
+  winner = min(cand1$evalue, cand2$evalue)
+  
+  return( list( evalue = winner,
+                evalueBiasDir = ifelse( winner == cand1$evalue, "positive", "negative"),
+                candidates = data.frame( biasDir = c("positive", "negative"),
+                                         evalue = c(cand1$evalue, cand2$evalue),
+                                         biasFactor = c(cand1$biasFactor, cand2$biasFactor),
+                                         isMin = c(cand1$evalue == winner, cand2$evalue == winner) ) ) )
+}
 
-
-# # from package
-# evalues.RD = function( n11, n10, n01, n00,  
-#                        true = 0, alpha = 0.05, grid = 0.0001, ... ) {
-#   
-#   # sanity check
-#   if ( any( c(n11, n10, n01, n00) < 0 ) ) stop("Negative cell counts are impossible.")
-#   
-#   # sample sizes
-#   N = n10 + n11 + n01 + n00
-#   N1 = n10 + n11  # total X=1
-#   N0 = n00 + n01  # total X=0
-#   
-#   # compute f = P(X = 1)
-#   f = N1 / N
-#   
-#   # P(D = 1 | X = 1)
-#   p1  = n11 / N1
-#   
-#   # P(D = 1 | X = 0)
-#   p0  = n01 / N0
-#   
-#   if( p1 < p0 ) stop("RD < 0; please relabel the exposure such that the risk difference > 0.")
-#   
-#   
-#   # standard errors
-#   se.p1 = sqrt( p1 * ( 1-p1 ) / N1 )
-#   se.p0 = sqrt( p0 * ( 1-p0 ) / N0 )
-#   
-#   # back to Peng's code
-#   s2.f   = f*( 1-f )/N
-#   s2.p1  = se.p1^2
-#   s2.p0  = se.p0^2
-#   diff   = p0*( 1-f ) - p1*f
-#   
-#   # bias factor and E-value for point estimate
-#   est.BF = ( sqrt( ( true + diff )^2 + 4 * p1 * p0 * f * ( 1-f )  ) - ( true + diff ) ) / ( 2 * p0 * f )
-#   est.Evalue    = threshold(est.BF)   
-#   if( p1 - p0 <= true ) stop("For risk difference, true value must be less than or equal to point estimate.")
-#   
-#   # compute lower CI limit
-#   Zalpha        = qnorm( 1-alpha/2 )  # critical value
-#   lowerCI       = p1 - p0 - Zalpha*sqrt( s2.p1 + s2.p0 )
-#   
-#   # check if CI contains null
-#   if ( lowerCI <= true ) {
-#     
-#     # warning( "Lower CI limit of RD is smaller than or equal to true value." )
-#     return( list( est.Evalue = est.Evalue, lower.Evalue = 1 ) )
-#     
-#   } else {
-#     # find E-value for lower CI limit
-#     # we know it's less than or equal to E-value for point estimate
-#     BF.search = seq( 1, est.BF, grid )
-#     
-#     # population-standardized risk difference
-#     RD.search = p1 - p0 * BF.search
-#     f.search  = f + ( 1-f )/BF.search
-#     
-#     # using equation for RD^true on pg 376, compute the lower CI limit for these parameters
-#     # RD.search * f.search is exactly the RHS of the inequality for RD^true ( population )
-#     Low.search = RD.search * f.search -
-#       Zalpha * sqrt( ( s2.p1 + s2.p0 * BF.search^2 ) * f.search^2 +
-#                        RD.search^2 * ( 1 - 1 / BF.search )^2 * s2.f )
-#     
-#     # get the first value for BF_u such that the CI limit hits the true value
-#     Low.ind    = ( Low.search <= true )
-#     Low.no     = which( Low.ind==1 )[1]
-#     lower.Evalue = threshold( BF.search[Low.no] )
-#     
-#     
-#     return(list(est.Evalue   = est.Evalue,
-#                 lower.Evalue = lower.Evalue))
-#   }
-#   
-# }
 
 
 # SMALL STATS FUNCTIONS ----------------------
