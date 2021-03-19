@@ -31,9 +31,10 @@ g = function(RR) {
 # quick variance of proportion
 var_prop = function(p, n) ( p * (1 - p) ) / n
 
-#@same for lower and upper?
 # bias-corrected variance for one stratum
 # Ding & VanderWeele, eAppendix 5 (delta method)
+# handles either positive or negative bias
+#@think about the fact that recoding depends on confounding rather than true p1, p0
 RDt_var = function(f, p1, p0, n1, n0, .maxB) {
   
   #@assumes that we always consider bias away from null 
@@ -91,32 +92,45 @@ RDt_bound = function( pw_1,
                       nw_1,
                       nw_0,
                       fw,
+                      maxB_w,
+                      biasDir_w,
                       
                       pm_1,
                       pm_0,
                       nm_1,
                       nm_0,
                       fm,
+                      maxB_m = NA,
+                      biasDir_m,
                       
-                      alpha = 0.05,
-                       
-                      .maxB ) {
+                      alpha = 0.05 ) {
   
-  #if ( pw_1 - pw_0 < 0 ) stop("Preventive RDw case not handled")
-  #if ( pm_1 - pm_0 > 0 ) stop("Causative RDm case not handled")
+  if ( is.na(maxB_m) ) {
+    maxB_m = maxB_w
+    message("Assuming same bias in each stratum because you didn't provide maxB_m")
+  }
   
+  # if ( is.na(biasDir_m) ) {
+  #   biasDir_m = "negative"
+  #   message("Assuming same bias in each stratum because you didn't provide maxB_m")
+  # }
+
   ### Corrected point estimate
-  # corrected RD for X=1 (women) stratum (shift upward) - pg 376
-  RDtW = ( pw_1 - pw_0 * .maxB ) * ( fw + ( 1 - fw ) / .maxB )
-  # corrected RD for X=0 (men) stratum (shift downward) - pg 376
-  RDtM = ( pm_1 * .maxB - pm_0 ) * ( fm + ( 1 - fm )/.maxB )  # without recoding f
+  # corrected RD for each stratum - pg 376
+  if ( biasDir_w == "positive" ) RDtW = ( pw_1 - pw_0 * maxB_w ) * ( fw + ( 1 - fw ) / maxB_w )
+  if ( biasDir_w == "negative" ) RDtW = ( pw_1 * maxB_w - pw_0 ) * ( fw + ( 1 - fw ) / maxB_w )
+  
+  if ( biasDir_m == "positive" ) RDtM = ( pm_1 - pm_0 * maxB_m ) * ( fm + ( 1 - fm ) / maxB_m )
+  if ( biasDir_m == "negative" ) RDtM = ( pm_1 * maxB_m - pm_0 ) * ( fw + ( 1 - fm ) / maxB_m )
   
   RDt = RDtW - RDtM
   
   # sanity check
   # should recover uncorrected RDs when there is no bias
-  if ( .maxB == 1 ) expect_equal(RDtW, pw_1 - pw_0)
-  if ( .maxB == 1 ) expect_equal(RDtM, pm_1 - pm_0)
+  if ( maxB_w == 1 ) expect_equal(RDtW, pw_1 - pw_0)
+  if ( maxB_m == 1 ) expect_equal(RDtM, pm_1 - pm_0)
+  
+  #bm
   
   ### Corrected confidence interval
   # calculate var for each stratum (W and M) separately
@@ -126,14 +140,14 @@ RDt_bound = function( pw_1,
                     p0 = pw_0,
                     n1 = nw_1,
                     n0 = nw_0,
-                    .maxB = .maxB )
+                    .maxB = maxB_w )
   
   VarRDtM = RDt_var(f = fm,
                     p1 = pm_1,
                     p0 = pm_0,
                     n1 = nm_1,
                     n0 = nm_0,
-                    .maxB = .maxB )
+                    .maxB = maxB_m )
   
   VarRDt = VarRDtW + VarRDtM
   
@@ -147,33 +161,87 @@ RDt_bound = function( pw_1,
   
   crit = qnorm( 1 - alpha/2 )
   res$lo = res$RD - crit * res$se
-  res$hi = res$RD - crit * res$se
+  res$hi = res$RD + crit * res$se
   res$pval = 2 * ( 1 - pnorm( abs( res$RD / res$se ) ) )
   
   return(res)
 }
 
-# # sanity check for symmetry
+# # sanity check: symmetry when shifting strata in opposite directions
 # # RDw and RDm should match here by symmetry
 # x1 = RDt_bound( pw_1 = 0.6,
 #                 pw_0 = 0.4,
 #                 nw_1 = 100,
 #                 nw_0 = 10,
 #                 fw = 0.25,
-#                 
+#                 maxB_w = 2,
+#                 biasDir_w = "positive",
+# 
 #                 pm_1 = 0.4,
 #                 pm_0 = 0.6,
 #                 nm_1 = 10,
 #                 nm_0 = 100,
 #                 fm = .25,
-#                 
-#                 alpha = 0.05,
-#                 
-#                 .maxB = 2 )
+#                 biasDir_m = "negative",
+# 
+#                 alpha = 0.05 )
 # 
 # expect_equal( x1$RD[1], -x1$RD[2] )
 # expect_equal( x1$se[1], x1$se[2] )
-
+# expect_equal( x1$lo[1], -x1$hi[2] )
+# expect_equal( x1$lo[2], -x1$hi[1] )
+# expect_equal( x1$pval[1], x1$pval[2] )
+# 
+# # sanity check: equality when both strata are the same and are positively biased
+# x1 = RDt_bound( pw_1 = 0.6,
+#                 pw_0 = 0.4,
+#                 nw_1 = 100,
+#                 nw_0 = 10,
+#                 fw = 0.25,
+#                 maxB_w = 1.6,
+#                 biasDir_w = "positive",
+#                 
+#                 pm_1 = 0.6,
+#                 pm_0 = 0.4,
+#                 nm_1 = 100,
+#                 nm_0 = 10,
+#                 fm = .25,
+#                 maxB_m = 1.6,
+#                 biasDir_m = "positive",
+#                 
+#                 alpha = 0.05 )
+# 
+# expect_equal( x1$RD[1], x1$RD[2] )
+# expect_equal( x1$se[1], x1$se[2] )
+# expect_equal( x1$lo[1], x1$lo[2] )
+# expect_equal( x1$hi[1], x1$hi[2] )
+# expect_equal( x1$pval[1], x1$pval[2] )
+# 
+# 
+# # sanity check: equality when both strata are the same and are NEGATIVELY biased
+# x1 = RDt_bound( pw_1 = 0.6,
+#                 pw_0 = 0.4,
+#                 nw_1 = 100,
+#                 nw_0 = 10,
+#                 fw = 0.25,
+#                 maxB_w = 1.6,
+#                 biasDir_w = "negative",
+#                 
+#                 pm_1 = 0.6,
+#                 pm_0 = 0.4,
+#                 nm_1 = 100,
+#                 nm_0 = 10,
+#                 fm = .25,
+#                 maxB_m = 1.6,
+#                 biasDir_m = "negative",
+#                 
+#                 alpha = 0.05 )
+# 
+# expect_equal( x1$RD[1], x1$RD[2] )
+# expect_equal( x1$se[1], x1$se[2] )
+# expect_equal( x1$lo[1], x1$lo[2] )
+# expect_equal( x1$hi[1], x1$hi[2] )
+# expect_equal( x1$pval[1], x1$pval[2] )
 
 
 # NOT IN USE:
