@@ -99,7 +99,7 @@ RDt_bound = function( pw_1,
                       fm,
                       
                       alpha = 0.05,
-                      
+                       
                       .maxB ) {
   
   #if ( pw_1 - pw_0 < 0 ) stop("Preventive RDw case not handled")
