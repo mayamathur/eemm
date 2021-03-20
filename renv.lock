@@ -93,6 +93,13 @@
       "Repository": "CRAN",
       "Hash": "abea3384649ef37f60ef51ce002f3547"
     },
+    "cpp11": {
+      "Package": "cpp11",
+      "Version": "0.2.6",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "f08909ebdad90b19d8d3930da4220564"
+    },
     "crayon": {
       "Package": "crayon",
       "Version": "1.4.1",
@@ -421,6 +428,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "4d894a114dbd4ecafeda5074e7c538e6"
+    },
+    "tidyr": {
+      "Package": "tidyr",
+      "Version": "1.1.3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "450d7dfaedde58e28586b854eeece4fa"
     },
     "tidyselect": {
       "Package": "tidyselect",

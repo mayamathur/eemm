@@ -1,19 +1,11 @@
 
 # PRELIMINARIES -------------------------------------------------------
 
-
-# The general workflow when working with renv is:
-#   
-#   Call renv::init() to initialize a new project-local environment with a private R library,
-# 
-# Work in the project as normal, installing and removing new R packages as they are needed in the project,
-# 
-# Call renv::snapshot() to save the state of the project library to the lockfile (called renv.lock),
-# 
-# Continue working on your project, installing and updating R packages as needed.
-# 
-# Call renv::snapshot() again to save the state of your project library if your attempts to update R packages were successful, or call renv::restore() to revert to the previous state as encoded in the lockfile if your attempts to update packages introduced some new problems.
+# This script uses renv to preserve the R environment specs (e.g., package versions.)
 library(renv)
+# run this if you want to reproduce results using the R environment we had:
+# renv::restore()
+
 library(EValue)
 library(MetaUtility)
 library(msm)
@@ -22,20 +14,25 @@ library(testthat)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
-# snapshot()
 
+# run this only if you want to update the R environment specs
+# renv::snapshot()
+
+# no sci notation
 options(scipen=999)
 
+# directory to save results
 results.dir = here("Applied example/Results from R")
 
-# for writing results to Overleaf papers
+# for writing results to Overleaf paper
 overleaf.dir = "~/Dropbox/Apps/Overleaf/EEMM: E-values for effect modification and interaction/R_objects"
 
+# get helper fnss
 setwd( here("Applied example/Code") )
 source("helper.R")
 
 
-# ENTER DATA (CELL COUNTS) ----------------------
+# ENTER LETTENEUR DATA (CELL COUNTS) ----------------------
 
 # only used for additive EMM
 
@@ -43,10 +40,6 @@ source("helper.R")
 # G = sex (1=women, 0=men)
 # Y = dementia
 # C = age, age^2, study ID (because this was a pooled analysis)
-
-# for additive interaction, need:
-# f_e = P(E=e | G=g)
-# p_{eg} = E[ Y | E=e, G=g ]
 
 # ~ Women ----------------------
 # cell counts are from Table 1 (totals) and Table 4 (cases)
@@ -295,7 +288,7 @@ update_result_csv( name = "RDc lo evalue mono",
 
 
 
-# # MISC ----------------------
+# MISC ----------------------
 
 
 # ~ Plot RDt bound as a function of bias factor ----------------------
