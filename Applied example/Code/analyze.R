@@ -107,7 +107,7 @@ update_result_csv( name = "n men",
                    value = nm_1 + nm_0 )
 
 
-# ADJUSTED MULTIPLICATIVE EMM ----------------------
+# MULTIPLICATIVE EMM ----------------------
 
 # checked this section 2021-3-8
 
@@ -160,10 +160,8 @@ update_result_csv( name = "RRc lo evalue mono",
 
 
 
-# UNADJUSTED ADDITIVE EMM ----------------------
+# ADDITIVE EMM ----------------------
 
-#bm: Check through this code in light of recoding issue
-# 
 
 # ~ Confounded point estimates and inference ----------------------
 
@@ -193,23 +191,6 @@ RDw = RDs$RD[ RDs$stratum == "1" ]
 RDm = RDs$RD[ RDs$stratum == "0" ]
 
 
-
-# ~~ sanity checks ----------------------
-#@eventually move to testthat in R package
-
-# check point estimates
-expect_equal( RDw,
-              pw_1 - pw_0,
-              158/nw_1 - 6/nw_0 )
-
-expect_equal( RDm,
-              pm_1 - pm_0,
-              158/nm_1 - 6/nm_0 )
-
-expect_equal( RDc,
-              (pw_1 - pw_0) - (pm_1 - pm_0) )
-
-
 # inference for risk differences
 VarRDw = var_RD(p1 = pw_1,
                 p0 = pw_0,
@@ -222,9 +203,6 @@ VarRDm = var_RD(p1 = pm_1,
                 n0 = nm_0 )
 
 ( VarRDc = VarRDw + VarRDm )
-
-
-
 
 
 # write results for each stratum and for EMMs
@@ -243,17 +221,12 @@ resRDc = write_est_inf( est = RDc,
                         prefix = "RDc",
                         takeExp = FALSE )
 
-# sanity check
-expect_equal( RDw - 1.96 * sqrt(VarRDw),
-              resRDw$lo,
-              tol = 0.001 )
-
-
 
 # ~ E-values ----------------------
 
-
 # ~~ Non-monotonic confounding ----------------------
+
+### point estimate
 ( Eadd.est = IC_evalue( stratum = "effectMod",
                         varName = "RD",
                         true = 0,
@@ -274,6 +247,7 @@ expect_equal( RDw - 1.96 * sqrt(VarRDw),
                         alpha = 0.05 ) )
 
 
+### CI limit
 ( Eadd.CI = IC_evalue( stratum = "effectMod",
                        varName = "lo",
                        true = 0,
@@ -301,8 +275,7 @@ update_result_csv( name = "RDc lo evalue",
 
 # ~~ Monotonic confounding ----------------------
 
-# ~~~ Point estimate ----------------------
-
+### point estimate
 ( Eadd.est.mono = IC_evalue_outer( varName = "RD" ) )
 
 # which bias direction is the winner (minimizes the E-value)?
@@ -311,47 +284,7 @@ Eadd.est.mono$evalueBiasDir
 update_result_csv( name = "RDc est evalue mono",
                    value = round( Eadd.est.mono$evalue, 2) )
 
-
-# # sanity check: did Evalue candidate #1 successfully move RDw down to RDm?
-# x = RDt_bound( pw_1 = pw_1,
-#            pw_0 = pw_0,
-#            nw_1 = nw_1,
-#            nw_0 = nw_0,
-#            fw = fw,
-#            biasDir_w = "positive",
-#            maxB_w = Eadd.est.mono$candidates$biasFactor[ Eadd.est.mono$candidates$biasDir == "positive" ],
-# 
-#            pm_1 = pm_1,
-#            pm_0 = pm_0,
-#            nm_1 = nm_1,
-#            nm_0 = nm_0,
-#            fm = fm,
-#            biasDir_m = "positive",
-#            maxB_m = 1 )
-# expect_equal( x$RD[ x$stratum == "1" ], RDm, tol = 0.0001 )
-# 
-# # sanity check: did Evalue candidate #2 successfully move RDm up to RDw?
-# ( x = RDt_bound( pw_1 = pw_1,
-#                pw_0 = pw_0,
-#                nw_1 = nw_1,
-#                nw_0 = nw_0,
-#                fw = fw,
-#                biasDir_w = "negative",
-#                maxB_w = 1,
-# 
-#                pm_1 = pm_1,
-#                pm_0 = pm_0,
-#                nm_1 = nm_1,
-#                nm_0 = nm_0,
-#                fm = fm,
-#                biasDir_m = "negative",
-#                maxB_m = Eadd.est.mono$candidates$biasFactor[ Eadd.est.mono$candidates$biasDir == "negative" ] ) )
-# expect_equal( x$RD[ x$stratum == "0" ], RDw, tol = 0.0001 )
-
-
-
-# ~~~ CI limit ----------------------
-
+### CI limit
 ( Eadd.CI.mono = IC_evalue_outer( varName = "lo" ) )
 
 # which bias direction is the winner (minimizes the E-value)?
@@ -359,42 +292,6 @@ Eadd.est.mono$evalueBiasDir
 
 update_result_csv( name = "RDc lo evalue mono",
                    value = round( Eadd.CI.mono$evalue, 2) )
-
-# sanity check: did Evalue candidate #1 successfully move RD_EMM CI limit to 0?
-( x = RDt_bound( pw_1 = pw_1,
-           pw_0 = pw_0,
-           nw_1 = nw_1,
-           nw_0 = nw_0,
-           fw = fw,
-           biasDir_w = "positive",
-           maxB_w = Eadd.CI.mono$candidates$biasFactor[ Eadd.CI.mono$candidates$biasDir == "positive" ],
-
-           pm_1 = pm_1,
-           pm_0 = pm_0,
-           nm_1 = nm_1,
-           nm_0 = nm_0,
-           fm = fm,
-           biasDir_m = "positive",
-           maxB_m = 1 ) )
-expect_equal( x$lo[ x$stratum == "effectMod" ], 0, tol = 0.0001 )
-
-# sanity check: did Evalue candidate #2 successfully move RD_EMM CI limit to 0?
-( x = RDt_bound( pw_1 = pw_1,
-               pw_0 = pw_0,
-               nw_1 = nw_1,
-               nw_0 = nw_0,
-               fw = fw,
-               biasDir_w = "negative",
-               maxB_w = 1,
-
-               pm_1 = pm_1,
-               pm_0 = pm_0,
-               nm_1 = nm_1,
-               nm_0 = nm_0,
-               fm = fm,
-               biasDir_m = "negative",
-               maxB_m = Eadd.CI.mono$candidates$biasFactor[ Eadd.CI.mono$candidates$biasDir == "negative" ] ) )
-expect_equal( x$lo[ x$stratum == "effectMod" ], 0, tol = 0.0001 )
 
 
 
@@ -454,6 +351,7 @@ dp = dp %>% rowwise() %>%
 xmax = max(dp$bias)
 #xmax = 1.5
 
+#@fix this
 # reshape for plotting joy
 dp2 = dp %>% pivot_longer( !bias,
                            names_to = "Estimate",
