@@ -220,10 +220,9 @@ resRDc = write_est_inf( est = RDc,
 # ~~ Non-monotonic confounding ----------------------
 
 ### point estimate
-( Eadd.est = IC_evalue( stratum = "effectMod",
-                        varName = "RD",
+( Eadd.est = IC_evalue( varName = "RD",
                         true = 0,
-                        monotonicBias = "no",
+                        monotonicBias = FALSE,
                         
                         pw_1 = pw_1,
                         pw_0 = pw_0,
@@ -241,10 +240,9 @@ resRDc = write_est_inf( est = RDc,
 
 
 ### CI limit
-( Eadd.CI = IC_evalue( stratum = "effectMod",
-                       varName = "lo",
+( Eadd.CI = IC_evalue( varName = "lo",
                        true = 0,
-                       monotonicBias = "no",
+                       monotonicBias = FALSE,
                        
                        pw_1 = pw_1,
                        pw_0 = pw_0,
@@ -269,7 +267,24 @@ update_result_csv( name = "RDc lo evalue",
 # ~~ Monotonic confounding ----------------------
 
 ### point estimate
-( Eadd.est.mono = IC_evalue_outer( varName = "RD" ) )
+( Eadd.est.mono = IC_evalue( varName = "RD",
+                             true = 0,
+                             monotonicBias = TRUE,
+                             monotonicBiasDirection = "unknown",
+                             
+                             pw_1 = pw_1,
+                             pw_0 = pw_0,
+                             nw_1 = nw_1,
+                             nw_0 = nw_0,
+                             fw = fw,
+                             
+                             pm_1 = pm_1,
+                             pm_0 = pm_0,
+                             nm_1 = nm_1,
+                             nm_0 = nm_0,
+                             fm = fm,
+                             
+                             alpha = 0.05 ) )
 
 # which bias direction is the winner (minimizes the E-value)?
 Eadd.est.mono$evalueBiasDir
@@ -278,7 +293,24 @@ update_result_csv( name = "RDc est evalue mono",
                    value = round( Eadd.est.mono$evalue, 2) )
 
 ### CI limit
-( Eadd.CI.mono = IC_evalue_outer( varName = "lo" ) )
+( Eadd.CI.mono = IC_evalue( varName = "lo",
+                            true = 0,
+                            monotonicBias = TRUE,
+                            monotonicBiasDirection = "unknown",
+                            
+                            pw_1 = pw_1,
+                            pw_0 = pw_0,
+                            nw_1 = nw_1,
+                            nw_0 = nw_0,
+                            fw = fw,
+                            
+                            pm_1 = pm_1,
+                            pm_0 = pm_0,
+                            nm_1 = nm_1,
+                            nm_0 = nm_0,
+                            fm = fm,
+                            
+                            alpha = 0.05 ) )
 
 # which bias direction is the winner (minimizes the E-value)?
 Eadd.est.mono$evalueBiasDir

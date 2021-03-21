@@ -98,7 +98,7 @@ RDt_bound = function( pw_1,
   # should recover uncorrected RDs when there is no bias
   if ( maxB_w == 1 ) expect_equal(RDtW, pw_1 - pw_0)
   if ( maxB_m == 1 ) expect_equal(RDtM, pm_1 - pm_0)
-
+  
   
   ### Corrected confidence interval
   # calculate var for each stratum (W and M) separately
@@ -180,36 +180,40 @@ RD_distance = function(stratum,
 
 
 # varName: as in RD_distance, lets you choose point estimate or CI limit for E-value
-# monotonicBias: "no" (non-monotonic), "positive", "negative"
+# monotonicBias: TRUE/FALSE
 # does NOT consider monontonic bias in arbitrary direction; for that, need to call 
-#  the wrapper IC_evalue_outer, which calls IC_evalue twice for each candidate bias direction
+#  the wrapper IC_evalue, which calls IC_evalue_inner twice for each candidate bias direction
 # also gives E-values for each stratum separately if wanted (based on varName)
-IC_evalue = function( stratum,
-                      varName,
-                      true = 0,
-                      monotonicBias = "no",
-                      
-                      pw_1,
-                      pw_0,
-                      nw_1,
-                      nw_0,
-                      fw,
-                      
-                      pm_1,
-                      pm_0,
-                      nm_1,
-                      nm_0,
-                      fm,
-                      
-                      alpha = 0.05 ) {
+IC_evalue_inner = function( stratum,
+                            varName,
+                            true = 0,
+                            monotonicBias = FALSE,
+                            monotonicBiasDirection = NA,
+                            
+                            pw_1,
+                            pw_0,
+                            nw_1,
+                            nw_0,
+                            fw,
+                            
+                            pm_1,
+                            pm_0,
+                            nm_1,
+                            nm_0,
+                            fm,
+                            
+                            alpha = 0.05 ) {
   
-
+  # catch wrong input
+  if ( monotonicBias == FALSE & !is.na(monotonicBiasDirection) ) warning("You specified that bias could be non-monotonic, so the argument monotonicBiasDirection will be ignored.")
+  
   # prepare to pass all arguments to another fn
   # https://stackoverflow.com/questions/29327423/use-match-call-to-pass-all-arguments-to-other-function
   # "-1" removes the name of the fn that was called ("IC_evalue")
   .args = as.list(match.call()[-1])
   # remove other args that are not to be passed to RD_distance
-  .args = .args[ !names(.args) %in% c("monotonicBias") ]
+  .args = .args[ !names(.args) %in% c("monotonicBias", "monotonicBiasDirection") ]
+  
   
   # # test match.call situation
   # .args$.maxB = 5
@@ -219,17 +223,17 @@ IC_evalue = function( stratum,
   # depends on biasDir assumptions
   #@assumes W stratum > 0 and M is < 0
   #so basically need to warn user to recode exposure if IC^c < 0 
-  if ( monotonicBias == "no" ) {
-     boundfn = function(x){
-       .args$maxB_w = x
-       .args$biasDir_w = "positive"
-       .args$maxB_m = x
-       .args$biasDir_m = "negative"
-        do.call( RD_distance, .args )
-     }
+  if ( monotonicBias == FALSE ) {
+    boundfn = function(x){
+      .args$maxB_w = x
+      .args$biasDir_w = "positive"
+      .args$maxB_m = x
+      .args$biasDir_m = "negative"
+      do.call( RD_distance, .args )
+    }
   }
   
-  if ( monotonicBias == "positive" ) {
+  if ( monotonicBias == TRUE & monotonicBiasDirection == "positive" ) {
     boundfn = function(x){
       .args$maxB_w = x
       .args$biasDir_w = "positive"
@@ -239,7 +243,7 @@ IC_evalue = function( stratum,
     }
   }
   
-  if ( monotonicBias == "negative" ) {
+  if ( monotonicBias == TRUE & monotonicBiasDirection == "negative" ) {
     boundfn = function(x){
       .args$maxB_w = 1 # no bias in this stratum
       .args$biasDir_w = "negative"
@@ -253,9 +257,9 @@ IC_evalue = function( stratum,
   opt = optimize( f = boundfn,
                   interval = c(0, 500),
                   maximum = FALSE )
-                  
+  
   if ( abs( opt$objective - true ) > 0.001 ) warning("E-value didn't move estimate close enough to true value; look into optimize() call")
-
+  
   return( data.frame( evalue = g(opt$minimum),
                       biasFactor = opt$minimum,  # not the bias factor, but the regular bias
                       bound = opt$objective ) )  # should be equal to true
@@ -266,93 +270,97 @@ IC_evalue = function( stratum,
 # looks at monotonic bias without assuming direction by calling IC_evalue twice
 # NOT in shape for package
 # lots of dataset-specific things in here
+
+# varName: "RD" or "lo"
+
+#@test only
+
+
 #bm
-IC_evalue_outer = function(varName,
-                           
-                           stratum = "effectMod",
-                           true = 0,
-                           monotonicBias = "positive",
-                           
-                           pw_1 = pw_1,
-                           pw_0 = pw_0,
-                           nw_1 = nw_1,
-                           nw_0 = nw_0,
-                           fw = fw,
-                           
-                           pm_1 = pm_1,
-                           pm_0 = pm_0,
-                           nm_1 = nm_1,
-                           nm_0 = nm_0,
-                           fm = fm,
-                           
-                           alpha = 0.05
-                           ) {
-  
+# monotonicBias: TRUE/FALSE
+# monotonicBiasDirection: NA, "positive", "negative", "unknown"
+IC_evalue = function(varName,
+                     
+                     true = 0,
+                     monotonicBias = FALSE,
+                     monotonicBiasDirection = NA,
+                     
+                     pw_1 = pw_1,
+                     pw_0 = pw_0,
+                     nw_1 = nw_1,
+                     nw_0 = nw_0,
+                     fw = fw,
+                     
+                     pm_1 = pm_1,
+                     pm_0 = pm_0,
+                     nm_1 = nm_1,
+                     nm_0 = nm_0,
+                     fm = fm,
+                     
+                     alpha = 0.05
+) {
   
   # prepare to pass all arguments to another fn
   # https://stackoverflow.com/questions/29327423/use-match-call-to-pass-all-arguments-to-other-function
   # "-1" removes the name of the fn that was called ("IC_evalue")
   .args = as.list(match.call()[-1])
   
-  .args$stratum = 
+  # we want the effect modification E-value (not stratum E-values)
+  .args$stratum = "effectMod"
   
-  # remove other args that are not to be passed to RD_distance
-  #.args = .args[ !names(.args) %in% c("monotonicBias") ]
+  # Case 0: Non-monotonic bias
+  if ( monotonicBias == FALSE ) {
+    
+    res = do.call( IC_evalue_inner, .args )
+    
+    return( list( evalue = res$evalue,
+                  biasDir = "non-monotonic",
+                  biasFactor = res$biasFactor ) )
+  }
   
-  # # test match.call situation
-  # .args$.maxB = 5
-  # do.call(RD_distance, .args)
+  # Cases 1-2: Known bias direction
+  # only need to call IC_evalue_inner once for these cases
+  if ( monotonicBias == TRUE & monotonicBiasDirection %in% c("positive", "negative") ) {
+    
+    res = do.call( IC_evalue_inner, .args )
+    
+    return( list( evalue = res$evalue,
+                  biasDir = monotonicBias,
+                  biasFactor = res$biasFactor ) )
+  }
   
+  # Case 3: Unknown bias direction
+  # now we have to consider both positive and negative bias and choose the 
+  #  winning candidate E-value (i.e., the smaller one)
+  if ( monotonicBias == TRUE & monotonicBiasDirection == "unknown" ) {
+    
+    # E-value candidate 1: Shift stratum W down to match stratum M
+    .args1 = .args
+    .args1$monotonicBiasDirection = "positive"
+    
+    cand1 = do.call( IC_evalue_inner, .args1 )
+    
+    
+    # E-value candidate 1: Shift stratum W down to match stratum M
+    .args2 = .args
+    .args2$monotonicBiasDirection = "negative"
+    
+    cand2 = do.call( IC_evalue_inner, .args2 )
+    
+    # Choose candidate E-value that is smaller
+    winner = min(cand1$evalue, cand2$evalue)
+    
+    return( list( evalue = winner,
+                  evalueBiasDir = ifelse( winner == cand1$evalue, "positive", "negative"),
+                  candidates = data.frame( biasDir = c("positive", "negative"),
+                                           evalue = c(cand1$evalue, cand2$evalue),
+                                           biasFactor = c(cand1$biasFactor, cand2$biasFactor),
+                                           isMin = c(cand1$evalue == winner, cand2$evalue == winner) ) ) )
+    
+    
+    
+  }
   
-  # E-value candidate 1: Shift stratum W down to match stratum M
-  ( cand1 = IC_evalue( stratum = "effectMod",
-                       varName = varName,
-                       true = 0,
-                       monotonicBias = "positive",
-                       
-                       pw_1 = pw_1,
-                       pw_0 = pw_0,
-                       nw_1 = nw_1,
-                       nw_0 = nw_0,
-                       fw = fw,
-                       
-                       pm_1 = pm_1,
-                       pm_0 = pm_0,
-                       nm_1 = nm_1,
-                       nm_0 = nm_0,
-                       fm = fm,
-                       
-                       alpha = 0.05 ) )
-  
-  # E-value candidate 2: Shift stratum M up to match stratum W
-  ( cand2 = IC_evalue( stratum = "effectMod",
-                       varName = varName,
-                       true = 0,
-                       monotonicBias = "negative",
-                       
-                       pw_1 = pw_1,
-                       pw_0 = pw_0,
-                       nw_1 = nw_1,
-                       nw_0 = nw_0,
-                       fw = fw,
-                       
-                       pm_1 = pm_1,
-                       pm_0 = pm_0,
-                       nm_1 = nm_1,
-                       nm_0 = nm_0,
-                       fm = fm,
-                       
-                       alpha = 0.05 ) )
-  
-  # Choose candidate E-value that is smaller
-  winner = min(cand1$evalue, cand2$evalue)
-  
-  return( list( evalue = winner,
-                evalueBiasDir = ifelse( winner == cand1$evalue, "positive", "negative"),
-                candidates = data.frame( biasDir = c("positive", "negative"),
-                                         evalue = c(cand1$evalue, cand2$evalue),
-                                         biasFactor = c(cand1$biasFactor, cand2$biasFactor),
-                                         isMin = c(cand1$evalue == winner, cand2$evalue == winner) ) ) )
 }
 
 

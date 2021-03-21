@@ -32,14 +32,14 @@ x1 = RDt_bound( pw_1 = 0.6,
                 fw = 0.25,
                 maxB_w = 2,
                 biasDir_w = "positive",
-
+                
                 pm_1 = 0.4,
                 pm_0 = 0.6,
                 nm_1 = 10,
                 nm_0 = 100,
                 fm = .25,
                 biasDir_m = "negative",
-
+                
                 alpha = 0.05 )
 
 expect_equal( x1$RD[1], -x1$RD[2] )
@@ -56,7 +56,7 @@ x1 = RDt_bound( pw_1 = 0.6,
                 fw = 0.25,
                 maxB_w = 1.6,
                 biasDir_w = "positive",
-
+                
                 pm_1 = 0.6,
                 pm_0 = 0.4,
                 nm_1 = 100,
@@ -64,7 +64,7 @@ x1 = RDt_bound( pw_1 = 0.6,
                 fm = .25,
                 maxB_m = 1.6,
                 biasDir_m = "positive",
-
+                
                 alpha = 0.05 )
 
 expect_equal( x1$RD[1], x1$RD[2] )
@@ -82,7 +82,7 @@ x1 = RDt_bound( pw_1 = 0.6,
                 fw = 0.25,
                 maxB_w = 1.6,
                 biasDir_w = "negative",
-
+                
                 pm_1 = 0.6,
                 pm_0 = 0.4,
                 nm_1 = 100,
@@ -90,7 +90,7 @@ x1 = RDt_bound( pw_1 = 0.6,
                 fm = .25,
                 maxB_m = 1.6,
                 biasDir_m = "negative",
-
+                
                 alpha = 0.05 )
 
 expect_equal( x1$RD[1], x1$RD[2] )
@@ -156,44 +156,44 @@ expect_equal( x$RD[ x$stratum == "effectMod" ], mine, tol = 0.0001 )
 
 
 # ~~~ E-value for 1 stratum from IC_evalue should match R package -----------------
-( evalueEst = IC_evalue( stratum = "1",
-                         varName = "RD",
-                         true = 0,
-                         monotonicBias = "no",
-                         
-                         pw_1,
-                         pw_0,
-                         nw_1,
-                         nw_0,
-                         fw,
-                         
-                         pm_1,
-                         pm_0,
-                         nm_1,
-                         nm_0,
-                         fm,
-                         
-                         alpha = 0.05 ) )
+( evalueEst = IC_evalue_inner( stratum = "1",
+                               varName = "RD",
+                               true = 0,
+                               monotonicBias = FALSE,
+                               
+                               pw_1 = pw_1,
+                               pw_0 = pw_0,
+                               nw_1 = nw_1,
+                               nw_0 = nw_0,
+                               fw = fw,
+                               
+                               pm_1 = pm_1,
+                               pm_0 = pm_0,
+                               nm_1 = nm_1,
+                               nm_0 = nm_0,
+                               fm = fm,
+                               
+                               alpha = 0.05 ) )
 
 
-( evalueCI = IC_evalue( stratum = "1",
-                        varName = "lo",
-                        true = 0,
-                        monotonicBias = "no",
-                        
-                        pw_1,
-                        pw_0,
-                        nw_1,
-                        nw_0,
-                        fw,
-                        
-                        pm_1,
-                        pm_0,
-                        nm_1,
-                        nm_0,
-                        fm,
-                        
-                        alpha = 0.05 ) )
+( evalueCI = IC_evalue_inner( stratum = "1",
+                              varName = "lo",
+                              true = 0,
+                              monotonicBias = FALSE,
+                              
+                              pw_1 = pw_1,
+                              pw_0 = pw_0,
+                              nw_1 = nw_1,
+                              nw_0 = nw_0,
+                              fw = fw,
+                              
+                              pm_1 = pm_1,
+                              pm_0 = pm_0,
+                              nm_1 = nm_1,
+                              nm_0 = nm_0,
+                              fm = fm,
+                              
+                              alpha = 0.05 ) )
 
 
 # now try against package:
@@ -259,6 +259,9 @@ pm_1 - pm0_corr
 
 
 # try with different stratum probabilities
+# th
+
+IC_evalue_outer( varName = "RD" )
 
 
 ##@END OF TEMP
@@ -289,20 +292,20 @@ expect_equal( Eadd.est$evalue, g(my.Badd.est), tol = 0.001 )
 
 # ~~~ Evalue candidate #1 (positive bias) should successfully move RDw down to RDm ----------------------
 x = RDt_bound( pw_1 = pw_1,
-           pw_0 = pw_0,
-           nw_1 = nw_1,
-           nw_0 = nw_0,
-           fw = fw,
-           biasDir_w = "positive",
-           maxB_w = Eadd.est.mono$candidates$biasFactor[ Eadd.est.mono$candidates$biasDir == "positive" ],
-
-           pm_1 = pm_1,
-           pm_0 = pm_0,
-           nm_1 = nm_1,
-           nm_0 = nm_0,
-           fm = fm,
-           biasDir_m = "positive",
-           maxB_m = 1 )
+               pw_0 = pw_0,
+               nw_1 = nw_1,
+               nw_0 = nw_0,
+               fw = fw,
+               biasDir_w = "positive",
+               maxB_w = Eadd.est.mono$candidates$biasFactor[ Eadd.est.mono$candidates$biasDir == "positive" ],
+               
+               pm_1 = pm_1,
+               pm_0 = pm_0,
+               nm_1 = nm_1,
+               nm_0 = nm_0,
+               fm = fm,
+               biasDir_m = "positive",
+               maxB_m = 1 )
 expect_equal( x$RD[ x$stratum == "1" ], RDm, tol = 0.0001 )
 
 # and likewise for CI limit
@@ -325,20 +328,20 @@ expect_equal( x$lo[ x$stratum == "effectMod" ], 0, tol = 0.0001 )
 
 # ~~~ Evalue candidate #2 (negative bias) should successfully move RDm up to RDw ----------------------
 ( x = RDt_bound( pw_1 = pw_1,
-               pw_0 = pw_0,
-               nw_1 = nw_1,
-               nw_0 = nw_0,
-               fw = fw,
-               biasDir_w = "negative",
-               maxB_w = 1,
-
-               pm_1 = pm_1,
-               pm_0 = pm_0,
-               nm_1 = nm_1,
-               nm_0 = nm_0,
-               fm = fm,
-               biasDir_m = "negative",
-               maxB_m = Eadd.est.mono$candidates$biasFactor[ Eadd.est.mono$candidates$biasDir == "negative" ] ) )
+                 pw_0 = pw_0,
+                 nw_1 = nw_1,
+                 nw_0 = nw_0,
+                 fw = fw,
+                 biasDir_w = "negative",
+                 maxB_w = 1,
+                 
+                 pm_1 = pm_1,
+                 pm_0 = pm_0,
+                 nm_1 = nm_1,
+                 nm_0 = nm_0,
+                 fm = fm,
+                 biasDir_m = "negative",
+                 maxB_m = Eadd.est.mono$candidates$biasFactor[ Eadd.est.mono$candidates$biasDir == "negative" ] ) )
 expect_equal( x$RD[ x$stratum == "0" ], RDw, tol = 0.0001 )
 
 # and likewise for CI limit
@@ -403,7 +406,7 @@ term1 = 1 / ( 2 * (fm * pm_1) )
 term2 = 4 * pm_1 * pm_0 * fm * (1 - fm)
 true = -RDw
 term3 = true + lambda
-  
+
 # bias factor
 ( myB = term1 * ( sqrt( term3^2 + term2 ) - term3 ) )
 expect_equal( targetB, myB, tol = 0.001 )
