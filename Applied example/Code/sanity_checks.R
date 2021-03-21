@@ -211,6 +211,7 @@ expect_equal( evalueOld$est.Evalue, evalueEst$evalue, tol = 0.001 )
 expect_equal( evalueOld$lower.Evalue, evalueCI$evalue, tol = 0.001 )
 
 # ~~~ E-value from IC_evalue should be the solution to RDt_bound ----------------------
+# pass the same bias factor to each stratum
 x = RDt_bound( pw_1 = pw_1,
                pw_0 = pw_0,
                nw_1 = nw_1,
@@ -229,6 +230,38 @@ x = RDt_bound( pw_1 = pw_1,
 expect_equal( x$RD[ x$stratum == "effectMod" ], 0, tol = 0.0001 )
 
 
+
+##@TEMP ONLY
+#bm: see if the RRs are biased by same factor when the E-value is attained
+RRw = pw_1/pw_0
+RRm = pm_1/pm_0
+
+# corrected probab
+
+( RRwt = RRw/Eadd.est$biasFactor )
+( RRmt = RRm*Eadd.est$biasFactor )
+
+# corrected probabilities
+pw0.corr = pw_1 / RRwt
+pw_1 - pw0.corr
+
+pm1.corr = pm_0 * RRmt
+pm1.corr - pm_0
+
+
+
+pw1_corr = pw_0 * (RRw/Eadd.est$biasFactor)
+pw1_corr - pw_0
+
+pm0_corr = pm_1 / (RRm*Eadd.est$biasFactor)
+pm_1 - pm0_corr
+# bm: think about this
+
+
+# try with different stratum probabilities
+
+
+##@END OF TEMP
 
 # ~~~ E-value from IC_evalue (grid search) should match closed form in paper ----------------------
 

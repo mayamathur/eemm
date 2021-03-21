@@ -266,7 +266,44 @@ IC_evalue = function( stratum,
 # looks at monotonic bias without assuming direction by calling IC_evalue twice
 # NOT in shape for package
 # lots of dataset-specific things in here
-IC_evalue_outer = function(varName) {
+#bm
+IC_evalue_outer = function(varName,
+                           
+                           stratum = "effectMod",
+                           true = 0,
+                           monotonicBias = "positive",
+                           
+                           pw_1 = pw_1,
+                           pw_0 = pw_0,
+                           nw_1 = nw_1,
+                           nw_0 = nw_0,
+                           fw = fw,
+                           
+                           pm_1 = pm_1,
+                           pm_0 = pm_0,
+                           nm_1 = nm_1,
+                           nm_0 = nm_0,
+                           fm = fm,
+                           
+                           alpha = 0.05
+                           ) {
+  
+  
+  # prepare to pass all arguments to another fn
+  # https://stackoverflow.com/questions/29327423/use-match-call-to-pass-all-arguments-to-other-function
+  # "-1" removes the name of the fn that was called ("IC_evalue")
+  .args = as.list(match.call()[-1])
+  
+  .args$stratum = 
+  
+  # remove other args that are not to be passed to RD_distance
+  #.args = .args[ !names(.args) %in% c("monotonicBias") ]
+  
+  # # test match.call situation
+  # .args$.maxB = 5
+  # do.call(RD_distance, .args)
+  
+  
   # E-value candidate 1: Shift stratum W down to match stratum M
   ( cand1 = IC_evalue( stratum = "effectMod",
                        varName = varName,
