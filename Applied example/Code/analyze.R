@@ -263,6 +263,26 @@ update_result_csv( name = "RDc est evalue",
 update_result_csv( name = "RDc lo evalue",
                    value = round( Eadd.CI$evalue, 2) )
 
+# look at how much each stratum is biased (absolutely) when E-value is attained
+temp = RDt_bound(   pw_1 = pw_1,
+             pw_0 = pw_0,
+             nw_1 = nw_1,
+             nw_0 = nw_0,
+             fw = fw,
+             biasDir_w = "positive",
+             maxB_w = Eadd.est$biasFactor,
+             
+             pm_1 = pm_1,
+             pm_0 = pm_0,
+             nm_1 = nm_1,
+             nm_0 = nm_0,
+             fm = fm,
+             biasDir_m = "negative",
+             maxB_m = Eadd.est$biasFactor )
+
+# biases in each stratum
+RDw - temp$RD[1]
+RDm - temp$RD[1]
 
 # ~~ Monotonic confounding ----------------------
 

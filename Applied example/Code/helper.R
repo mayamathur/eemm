@@ -273,8 +273,6 @@ IC_evalue_inner = function( stratum,
 
 # varName: "RD" or "lo"
 
-#@test only
-
 
 #bm
 # monotonicBias: TRUE/FALSE

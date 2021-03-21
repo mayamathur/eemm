@@ -231,40 +231,94 @@ expect_equal( x$RD[ x$stratum == "effectMod" ], 0, tol = 0.0001 )
 
 
 
-##@TEMP ONLY
-#bm: see if the RRs are biased by same factor when the E-value is attained
-RRw = pw_1/pw_0
-RRm = pm_1/pm_0
+# ~~~ #@RENAME ME: When is bound attained for non-mono case?
 
-# corrected probab
-
-( RRwt = RRw/Eadd.est$biasFactor )
-( RRmt = RRm*Eadd.est$biasFactor )
-
-# corrected probabilities
-pw0.corr = pw_1 / RRwt
-pw_1 - pw0.corr
-
-pm1.corr = pm_0 * RRmt
-pm1.corr - pm_0
-
-
-
-pw1_corr = pw_0 * (RRw/Eadd.est$biasFactor)
-pw1_corr - pw_0
-
-pm0_corr = pm_1 / (RRm*Eadd.est$biasFactor)
-pm_1 - pm0_corr
-# bm: think about this
-
-
-# try with different stratum probabilities
-# th
-
-IC_evalue_outer( varName = "RD" )
+# #bm: see if the RRs are biased by same factor when the E-value is attained
+# RRw = pw_1/pw_0
+# RRm = pm_1/pm_0
+# 
+# # corrected probab
+# 
+# ( RRwt = RRw/Eadd.est$biasFactor )
+# ( RRmt = RRm*Eadd.est$biasFactor )
+# 
+# # corrected probabilities
+# pw0.corr = pw_1 / RRwt
+# pw_1 - pw0.corr
+# 
+# pm1.corr = pm_0 * RRmt
+# pm1.corr - pm_0
+# 
+# 
+# 
+# pw1_corr = pw_0 * (RRw/Eadd.est$biasFactor)
+# pw1_corr - pw_0
+# 
+# pm0_corr = pm_1 / (RRm*Eadd.est$biasFactor)
+# pm_1 - pm0_corr
+# # bm: think about this
 
 
-##@END OF TEMP
+( resNonMono = IC_evalue( varName = "RD",
+                          true = 0,
+                          monotonicBias = FALSE,
+                          
+                          pw_1 = .6,
+                          pw_0 = .4,
+                          nw_1 = 100,
+                          nw_0 = 100,
+                          fw = .5,
+                          
+                          pm_1 = 0.3,
+                          pm_0 = 0.20,
+                          nm_1 = 100,
+                          nm_0 = 100,
+                          fm = .5,
+                          
+                          alpha = 0.05 ) )
+
+RDs2 = RDt_bound(   pw_1 = .6,
+                    pw_0 = .4,
+                    nw_1 = 100,
+                    nw_0 = 100,
+                    fw = .5,
+                    biasDir_w = "positive",
+                    maxB_w = resNonMono$biasFactor,
+                    
+                    pm_1 = 0.3,
+                    pm_0 = 0.20,
+                    nm_1 = 100,
+                    nm_0 = 100,
+                    fm = .5,
+                    biasDir_m = "negative",
+                    maxB_m = resNonMono$biasFactor )
+
+
+# stratum W only
+evalueOld2 = EValue::evalues.RD( n11 = 100 * (0.6),
+                                n10 = 100 * (1-0.6),
+                                n01 = 100 * 0.4,
+                                n00 = 100 * (1-0.4),
+                                true = RDs2$RD[1],
+                                alpha = 0.05)
+
+expect_equal( evalueOld2$est.Evalue, resNonMono$evalue, tol = 0.001 )
+
+
+# # stratum M only
+# evalueOld2 = EValue::evalues.RD( n11 = 100 * (0.3),
+#                                  n10 = 100 * (1-0.3),
+#                                  n01 = 100 * 0.2,
+#                                  n00 = 100 * (1-0.2),
+#                                  true = RDs2$RD[2],
+#                                  alpha = 0.05)
+# 
+# 
+# # they agree! :D
+# # woohoo!!!!!
+# expect_equal( evalueOld2$est.Evalue, resNonMono$evalue, tol = 0.001 )
+
+
 
 # ~~~ E-value from IC_evalue (grid search) should match closed form in paper ----------------------
 
