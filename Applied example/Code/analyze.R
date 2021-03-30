@@ -343,133 +343,87 @@ update_result_csv( name = "RDc lo evalue mono",
 # MISC ----------------------
 
 
-# ~ Plot RDt bound as a function of bias factor ----------------------
-
-# sanity check: plot the bound as fn of max
-library(ggplot2)
-
-dp = data.frame( bias = seq(1,5,.001) )
-
-dp = dp %>% rowwise() %>%
-  mutate( boundW = RDt_bound( pw_1 = pw_1,
-                              pw_0 = pw_0,
-                              nw_1 = nw_1,
-                              nw_0 = nw_0,
-                              fw = fw,
-                              
-                              pm_1 = pm_1,
-                              pm_0 = pm_0,
-                              nm_1 = nm_1,
-                              nm_0 = nm_0,
-                              fm = fm,
-                              
-                              .max = bias )[1,"RD"],
-          
-          boundM = RDt_bound( pw_1 = pw_1,
-                              pw_0 = pw_0,
-                              nw_1 = nw_1,
-                              nw_0 = nw_0,
-                              fw = fw,
-                              
-                              pm_1 = pm_1,
-                              pm_0 = pm_0,
-                              nm_1 = nm_1,
-                              nm_0 = nm_0,
-                              fm = fm,
-                              
-                              .max = bias )[2,"RD"],
-          
-          boundEMM = RDt_bound( pw_1 = pw_1,
-                                pw_0 = pw_0,
-                                nw_1 = nw_1,
-                                nw_0 = nw_0,
-                                fw = fw,
-                                
-                                pm_1 = pm_1,
-                                pm_0 = pm_0,
-                                nm_1 = nm_1,
-                                nm_0 = nm_0,
-                                fm = fm,
-                                
-                                .max = bias )[3,"RD"] )
-
-xmax = max(dp$bias)
-#xmax = 1.5
-
-#@fix this
-# reshape for plotting joy
-dp2 = dp %>% pivot_longer( !bias,
-                           names_to = "Estimate",
-                           values_to = "Value" )
-
-
-# **here, boundEMM is when bias is non-monotonic confounding
-#  and boundM and boundW are monotonic confounding (i.e., that stratum is the only one affected)
-ggplot( data = dp2 ) +
-  
-  # line for the observed RDc
-  geom_hline( yintercept = RDc, 
-              lty = 2,
-              color = "red") +
-  geom_line(size = 1,  aes( x = bias,
-                            y = Value,
-                            color = Estimate)) +
-  
-  theme_classic() +
-  
-  scale_x_continuous( limits = c(1, xmax ),
-                      breaks = seq( 1, xmax, .5) ) +
-  
-  # scale_y_continuous( limits = c(1,max(dp$bound)),
-  #                     breaks = seq(1,max(dp$bound),.5)) +
-  
-  #xlab(bquote(RR[XY]^c)) +
-  xlab("Bias factor") +
-  ylab("Bound on RDt")
-
-
-
+# # ~ Plot RDt bound as a function of bias factor ----------------------
 # 
-# 
-# 
-# # plot it along with the normal E-value
+# # sanity check: plot the bound as fn of max
 # library(ggplot2)
 # 
+# dp = data.frame( bias = seq(1,5,.001) )
 # 
-# dp = data.frame( RR = seq(1,5,.001) )
-# dp$evalue = dp$RR + sqrt( dp$RR * (dp$RR - 1) )
-# dp$evalueInt = sqrt(dp$RR) + sqrt( sqrt(dp$RR) * ( sqrt(dp$RR) - 1) )
+# dp = dp %>% rowwise() %>%
+#   mutate( boundW = RDt_bound( pw_1 = pw_1,
+#                               pw_0 = pw_0,
+#                               nw_1 = nw_1,
+#                               nw_0 = nw_0,
+#                               fw = fw,
+#                               
+#                               pm_1 = pm_1,
+#                               pm_0 = pm_0,
+#                               nm_1 = nm_1,
+#                               nm_0 = nm_0,
+#                               fm = fm,
+#                               
+#                               .max = bias )[1,"RD"],
+#           
+#           boundM = RDt_bound( pw_1 = pw_1,
+#                               pw_0 = pw_0,
+#                               nw_1 = nw_1,
+#                               nw_0 = nw_0,
+#                               fw = fw,
+#                               
+#                               pm_1 = pm_1,
+#                               pm_0 = pm_0,
+#                               nm_1 = nm_1,
+#                               nm_0 = nm_0,
+#                               fm = fm,
+#                               
+#                               .max = bias )[2,"RD"],
+#           
+#           boundEMM = RDt_bound( pw_1 = pw_1,
+#                                 pw_0 = pw_0,
+#                                 nw_1 = nw_1,
+#                                 nw_0 = nw_0,
+#                                 fw = fw,
+#                                 
+#                                 pm_1 = pm_1,
+#                                 pm_0 = pm_0,
+#                                 nm_1 = nm_1,
+#                                 nm_0 = nm_0,
+#                                 fm = fm,
+#                                 
+#                                 .max = bias )[3,"RD"] )
 # 
-# ggplot( data = dp ) +
+# xmax = max(dp$bias)
+# #xmax = 1.5
+# 
+# #@fix this
+# # reshape for plotting joy
+# dp2 = dp %>% pivot_longer( !bias,
+#                            names_to = "Estimate",
+#                            values_to = "Value" )
+# 
+# 
+# # **here, boundEMM is when bias is non-monotonic confounding
+# #  and boundM and boundW are monotonic confounding (i.e., that stratum is the only one affected)
+# ggplot( data = dp2 ) +
 #   
-#   geom_abline(intercept = 0,
-#               slope = 1,
+#   # line for the observed RDc
+#   geom_hline( yintercept = RDc, 
 #               lty = 2,
-#               color = "gray") +
+#               color = "red") +
+#   geom_line(size = 1,  aes( x = bias,
+#                             y = Value,
+#                             color = Estimate)) +
 #   
-#   geom_line(size = 1,  aes( x = RR,
-#                             y = evalue)) +
-#   geom_line(size = 1,  aes( x = RR,
-#                             y = evalueInt)) +
 #   theme_classic() +
 #   
-#   scale_x_continuous( limits = c(1, max(dp$RR)),
-#                       breaks = seq(1,max(dp$RR),.5)) +
+#   scale_x_continuous( limits = c(1, xmax ),
+#                       breaks = seq( 1, xmax, .5) ) +
 #   
-#   scale_y_continuous( limits = c(1,5),
-#                       breaks = seq(1,5,.5)) +
+#   # scale_y_continuous( limits = c(1,max(dp$bound)),
+#   #                     breaks = seq(1,max(dp$bound),.5)) +
 #   
-#   xlab(bquote(RR[XY]^c)) + 
-#   ylab("E-value")
-# 
-# 
-
-
-
-
-
-
-
-
-
+#   #xlab(bquote(RR[XY]^c)) +
+#   xlab("Bias factor") +
+#   ylab("Bound on RDt")
 

@@ -2,14 +2,7 @@
 # USAGE NOTES ----------------------
 
 # Algorithm structure:
-# IC_evalue > RD_distance > RDt_bound < RDt_var
-
-# If you eventually move these fns to package, note that:
-#  - Will need to think through fns' assumptions about signs 
-#    (e.g., RDc < 0 case)
-#  - Have not dealt with weird cases like if IC^c is already less than IC^t 
-#    IC_evalue will probably complain about sqrt(RR * (RR - 1)) being undef'nd in that case
-#  - Search "#@" for notes on other assumptions in fns that would need to be gnlz'd  
+# IC_evalue > RD_distance > RDt_bound > RDt_var
 
 # BIG STATS FUNCTIONS ----------------------
 
@@ -149,7 +142,7 @@ RD_distance = function(stratum,
                        ...) {
   .RDs = RDt_bound(...)
   
-  abs( .RDs[[varName]][ RDs$stratum == stratum ] - true )
+  abs( .RDs[[varName]][ .RDs$stratum == stratum ] - true )
 }
 
 

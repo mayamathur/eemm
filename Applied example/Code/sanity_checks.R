@@ -231,32 +231,7 @@ expect_equal( x$RD[ x$stratum == "effectMod" ], 0, tol = 0.0001 )
 
 
 
-# ~~~ #@RENAME ME: When is bound attained for non-mono case?
-
-# #bm: see if the RRs are biased by same factor when the E-value is attained
-# RRw = pw_1/pw_0
-# RRm = pm_1/pm_0
-# 
-# # corrected probab
-# 
-# ( RRwt = RRw/Eadd.est$biasFactor )
-# ( RRmt = RRm*Eadd.est$biasFactor )
-# 
-# # corrected probabilities
-# pw0.corr = pw_1 / RRwt
-# pw_1 - pw0.corr
-# 
-# pm1.corr = pm_0 * RRmt
-# pm1.corr - pm_0
-# 
-# 
-# 
-# pw1_corr = pw_0 * (RRw/Eadd.est$biasFactor)
-# pw1_corr - pw_0
-# 
-# pm0_corr = pm_1 / (RRm*Eadd.est$biasFactor)
-# pm_1 - pm0_corr
-# # bm: think about this
+# ~~~ When is bound attained for non-mono case?
 
 
 ( resNonMono = IC_evalue( varName = "RD",
