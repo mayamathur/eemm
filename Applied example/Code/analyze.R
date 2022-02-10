@@ -100,7 +100,7 @@ update_result_csv( name = "n men",
                    value = nm_1 + nm_0 )
 
 
-# MULTIPLICATIVE EMM ----------------------
+# LETENNEUR: MULTIPLICATIVE EMM ----------------------
 
 # checked this section 2021-3-8
 
@@ -112,9 +112,9 @@ RRm = 1.09
 ( RRc = RRw/RRm )
 
 # approximate CI limits for RRc since paper only gives CI limits by stratum
-# these are on log-RR scale
-VarLogRRw = scrape_meta(est = RRw, hi = 8.72 )$vyi
-VarLogRRm = scrape_meta(est = RRm, hi = 1.94 )$vyi
+# variances calculated here are on log-RR scale
+VarLogRRw = scrape_meta(type = "RR", est = RRw, hi = 8.72 )$vyi
+VarLogRRm = scrape_meta(type = "RR", est = RRm, hi = 1.94 )$vyi
 
 VarLogRRc = VarLogRRw + VarLogRRm
 
@@ -153,7 +153,7 @@ update_result_csv( name = "RRc lo evalue mono",
 
 
 
-# ADDITIVE EMM ----------------------
+# LETENNEUR: ADDITIVE EMM ----------------------
 
 
 # ~ Confounded point estimates and inference ----------------------
@@ -337,6 +337,63 @@ Eadd.est.mono$evalueBiasDir
 
 update_result_csv( name = "RDc lo evalue mono",
                    value = round( Eadd.CI.mono$evalue, 2) )
+
+
+
+
+
+# WINTER: MULTIPLICATIVE EMM  ----------------------
+
+
+# ~ Confounded point estimates and inference ----------------------
+
+# https://link.springer.com/article/10.1007/s12603-016-0837-4
+
+# "Whereas a BMI of ≥30 was associated with a significantly increased mortality risk in the younger group (HR (95% CI): 1.42 (1.22, 1.65)), not seen in the older group (HR (95% CI): 1.04 (0.91, 1.19))."
+
+# these are HRs with rare outcome
+HRy = 1.42
+HRo = 1.04
+( HRc = HRy/HRo )
+
+# approximate CI limits
+VarLogHRy = scrape_meta(type = "RR", est = HRy, hi = 1.65 )$vyi
+VarLogHRo = scrape_meta(type = "RR", est = HRo, hi = 1.19 )$vyi
+
+VarLogHRc = VarLogHRy + VarLogHRo
+
+
+# write to results
+resHRc = write_est_inf( est = log(HRc), 
+                        var = VarLogHRc,
+                        prefix = "Winter HRc",
+                        takeExp = TRUE )
+
+# ~ E-values ----------------------
+
+# ~~ Non-monotonic confounding ----------------------
+# take square roots
+( Emult = evalue( RR( sqrt(HRc) ),
+                  lo = sqrt( resHRc$lo ) )["E-values", c("point", "lower") ] )
+
+
+# ~~ Monotonic confounding ----------------------
+# (regular E-value transformation)
+( Emult.mono = evalue( RR(HRc),
+                       lo = resHRc$lo )["E-values", c("point", "lower") ] )
+
+
+update_result_csv( name = "Winter RRc est evalue",
+                   value = round( Emult[1], 2) )
+update_result_csv( name = "Winter RRc lo evalue",
+                   value = round( Emult[2], 2) )
+
+update_result_csv( name = "Winter RRc est evalue mono",
+                   value = round( Emult.mono[1], 2) )
+update_result_csv( name = "Winter RRc lo evalue mono",
+                   value = round( Emult.mono[2], 2) )
+
+
 
 
 
