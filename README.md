@@ -3,7 +3,7 @@
 
 This repository contains all data, code, and materials required to reproduce the code example, applied examples, and simulation study reported in:
 
-*Mathur MB, Smith LH, Yoshida K, Ding P, VanderWeele TJ (under review). E-values for effect modification and approximations for causal interaction.*
+*Mathur MB, Smith LH, Yoshida K, Ding P, VanderWeele TJ (2022+). E-values for effect modification and approximations for causal interaction. **International Journal of Epidemiology**. In press.*
 
 ## How to reproduce the applied example on education and dementia incidence
 
