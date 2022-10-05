@@ -9,10 +9,9 @@
 # bias-corrected variance for one stratum
 # Ding & VanderWeele, eAppendix 5 (delta method)
 # handles either positive or negative bias
-#@think about the fact that recoding depends on confounding rather than true p1, p0
 RDt_var = function(f, p1, p0, n1, n0, .maxB) {
   
-  #@assumes that we always consider bias away from null 
+  # assumes that we always consider bias away from null 
   # if risk difference < 0, reverse strata coding in order to
   #  apply same bound
   if ( p1 - p0 < 0 ){
@@ -40,9 +39,8 @@ RDt_var = function(f, p1, p0, n1, n0, .maxB) {
 
 
 # corrected RD for a given amount of bias
-# @needs to accept argument "true"
 # .maxB: the bias factor, NOT the Evalue!
-#@always shifts stratum W up and stratum M down, so assumes they are ordered
+# always shifts stratum W up and stratum M down, so assumes they are ordered
 # and shifts each stratum by same bias factor .maxB
 RDt_bound = function( pw_1,
                       pw_0,
@@ -214,7 +212,7 @@ IC_evalue_inner = function( stratum,
   
   ### Set up the bounding factor fn to be maximized to get the E-value
   # depends on biasDir assumptions
-  #@assumes W stratum > 0 and M is < 0
+  # assumes W stratum > 0 and M is < 0
   #so basically need to warn user to recode exposure if IC^c < 0 
   if ( monotonicBias == FALSE ) {
     boundfn = function(x){
@@ -246,7 +244,6 @@ IC_evalue_inner = function( stratum,
     }
   }
   
-  #@ revisit upper bound of search space (500)
   opt = optimize( f = boundfn,
                   interval = c(0, 500),
                   maximum = FALSE )
